@@ -36,7 +36,7 @@ import org.kiji.express.modeling.Extractor
 import org.kiji.express.modeling.impl.KeyValueStoreImplSuite
 import org.kiji.express.modeling.KeyValueStore
 import org.kiji.express.modeling.lib.FirstValueExtractor
-import org.kiji.express.modeling.ScoreProducerJobBuilder
+import org.kiji.express.modeling.ScoringProducerJobBuilder
 import org.kiji.express.modeling.Scorer
 import org.kiji.express.util.Resources.doAndClose
 import org.kiji.express.util.Resources.doAndRelease
@@ -102,7 +102,7 @@ class ScoreProducerSuite
                           "use_dcache" -> "false"))))))
 
       // Build the produce job.
-      val produceJob = ScoreProducerJobBuilder.buildJob(
+      val produceJob = ScoringProducerJobBuilder.buildJob(
           model = modelDefinition,
           environment = modelEnvironment)
 
@@ -169,7 +169,7 @@ class ScoreProducerSuite
               keyValueStoreSpecs = Seq())))
 
       // Build the produce job.
-      val produceJob = ScoreProducerJobBuilder.buildJob(
+      val produceJob = ScoringProducerJobBuilder.buildJob(
           model = modelDefinition,
           environment = modelEnvironment)
 
@@ -236,7 +236,7 @@ class ScoreProducerSuite
               keyValueStoreSpecs = Seq())))
 
       // Build the produce job.
-      val produceJob = ScoreProducerJobBuilder.buildJob(
+      val produceJob = ScoringProducerJobBuilder.buildJob(
           model = modelDefinition,
           environment = modelEnvironment)
 

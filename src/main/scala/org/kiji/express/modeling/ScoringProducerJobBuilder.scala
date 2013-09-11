@@ -27,7 +27,7 @@ import org.kiji.express.modeling.config.ModelDefinition
 import org.kiji.express.modeling.config.ModelEnvironment
 import org.kiji.express.modeling.config.ScoreEnvironment
 import org.kiji.express.modeling.config.ValidationException
-import org.kiji.express.modeling.framework.ScoreProducer
+import org.kiji.express.modeling.framework.ScoringProducer
 import org.kiji.mapreduce.KijiMapReduceJob
 import org.kiji.mapreduce.output.MapReduceJobOutputs
 import org.kiji.mapreduce.produce.KijiProduceJobBuilder
@@ -37,7 +37,7 @@ import org.kiji.schema.KijiURI
  * Used to build jobs for running the score phase of a model in batch over an entire
  * input table.
  */
-object ScoreProducerJobBuilder {
+object ScoringProducerJobBuilder {
   /**
    * Builds a job for running the score phase of a model in batch over an entire input table.
    *
@@ -49,8 +49,8 @@ object ScoreProducerJobBuilder {
   def buildJob(model: ModelDefinition, environment: ModelEnvironment,
       conf: Configuration = HBaseConfiguration.create()): KijiMapReduceJob = {
     // Serialize the model configuration objects.
-    conf.set(ScoreProducer.modelDefinitionConfKey, model.toJson)
-    conf.set(ScoreProducer.modelEnvironmentConfKey, environment.toJson)
+    conf.set(ScoringProducer.modelDefinitionConfKey, model.toJson)
+    conf.set(ScoringProducer.modelEnvironmentConfKey, environment.toJson)
 
     val scoreModel: Option[Class[_]] = model.scorerClass
     val scoreEnv: Option[ScoreEnvironment] = environment.scoreEnvironment
@@ -72,7 +72,7 @@ object ScoreProducerJobBuilder {
     KijiProduceJobBuilder.create()
         .withConf(conf)
         .withInputTable(uri)
-        .withProducer(classOf[ScoreProducer])
+        .withProducer(classOf[ScoringProducer])
         .withOutput(MapReduceJobOutputs.newDirectKijiTableMapReduceJobOutput(uri))
         .build()
   }

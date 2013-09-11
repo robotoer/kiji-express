@@ -30,7 +30,7 @@ import org.kiji.annotations.ApiAudience
 import org.kiji.annotations.ApiStability
 import org.kiji.common.flags.Flag
 import org.kiji.common.flags.FlagParser
-import org.kiji.express.modeling.ScoreProducerJobBuilder
+import org.kiji.express.modeling.ScoringProducerJobBuilder
 
 
 /**
@@ -68,7 +68,7 @@ final class ScoreJobTool extends Configured with Tool {
     // scalastyle:on null
     validateFlags()
     ScoreJobTool.LOGGER.info("Building Extract-Score batch job.")
-    val produceJob = ScoreProducerJobBuilder.buildJob(modelDefPath = mModelDefPath,
+    val produceJob = ScoringProducerJobBuilder.buildJob(modelDefPath = mModelDefPath,
         environmentPath = mModelEnvPath, config = getConf())
     ScoreJobTool.LOGGER.info("Running Extract-Score batch job.")
     produceJob.run() match {

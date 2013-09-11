@@ -92,16 +92,6 @@ protocol Modeling {
      * Note: This field should be null if using a PMML defined model.
      */
     union{null, AvroPhaseDefinition} scorer_phase = null;
-
-    // PMML fields ---------------------------------------------------------------------------------
-    /**
-     * Specifies the location of a pmml file to load a model from.
-     *
-     * Note: This field should be null if not using a PMML defined model.
-     */
-    // QUESTION FOR REVIEWER: Does this property belong in the ModelDefinition, or should we create
-    // another layer of abstraction so that no paths are directly stored in a ModelDefinition?
-    union{null, string} pmml_file = null;
   }
 
   /**
@@ -126,7 +116,8 @@ protocol Modeling {
   enum AvroKeyValueStoreType {
     AVRO_KV,
     AVRO_RECORD,
-    KIJI_TABLE
+    KIJI_TABLE,
+    PMML_MODEL
   }
 
   /**

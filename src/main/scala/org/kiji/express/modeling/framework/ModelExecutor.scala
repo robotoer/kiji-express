@@ -29,7 +29,7 @@ import org.kiji.annotations.ApiAudience
 import org.kiji.annotations.ApiStability
 import org.kiji.annotations.Inheritance
 import org.kiji.express.modeling.Preparer
-import org.kiji.express.modeling.ScoreProducerJobBuilder
+import org.kiji.express.modeling.ScoringProducerJobBuilder
 import org.kiji.express.modeling.Trainer
 import org.kiji.express.modeling.config.ModelDefinition
 import org.kiji.express.modeling.config.ModelEnvironment
@@ -138,7 +138,7 @@ final case class ModelExecutor(
    */
   def runScorer(currentArgs: Args = Args(Nil)): Boolean = {
     // TODO Add ability to pass arguments to scorer depending on how KijiScoring decides to do it.
-    ScoreProducerJobBuilder
+    ScoringProducerJobBuilder
         .buildJob(modelDefinition, modelEnvironment, hadoopConfiguration)
         .run()
   }

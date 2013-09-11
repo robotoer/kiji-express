@@ -30,8 +30,6 @@ import org.kiji.express.modeling.ExtractFn
 import org.kiji.express.modeling.Extractor
 import org.kiji.express.modeling.config.KijiInputSpec
 import org.kiji.express.modeling.config.KeyValueStoreSpec
-import org.kiji.express.modeling.config.ModelDefinition
-import org.kiji.express.modeling.config.ModelEnvironment
 import org.kiji.express.modeling.impl.ModelJobUtils
 import org.kiji.express.modeling.impl.ModelJobUtils.PhaseType.SCORE
 import org.kiji.express.modeling.ScoreFn
@@ -59,38 +57,16 @@ import org.kiji.schema.KijiURI
  */
 @ApiAudience.Framework
 @ApiStability.Experimental
-final class ScoreProducer
-    extends KijiProducer {
-  /** The model definition. This variable must be initialized. */
-  private[this] var _modelDefinition: Option[ModelDefinition] = None
-  private[this] def modelDefinition: ModelDefinition = {
-    _modelDefinition.getOrElse {
-      throw new IllegalStateException(
-          "ScoreProducer is missing its model definition. Did setConf get called?")
-    }
-  }
-
-  /** Environment required to run phases of a model. This variable must be initialized. */
-  private[this] var _modelEnvironment: Option[ModelEnvironment] = None
-  private[this] def modelEnvironment: ModelEnvironment = {
-    _modelEnvironment.getOrElse {
-      throw new IllegalStateException(
-          "ScoreProducer is missing its run profile. Did setConf get called?")
-    }
-  }
-
+final class ScoringProducer
+    extends KijiProducer
+    with ModelConfigurable {
   /** Extractor to use for this model definition. This variable must be initialized. */
-  private[this] var _extractor: Option[Extractor] = None
-  private[this] def extractor: Extractor = {
-    _extractor.getOrElse {
-      throw new IllegalStateException(
-          "ScoreProducer is missing its extractor. Did setConf get called?")
-    }
-  }
+  private var _extractor: Option[Extractor] = None
+  private def extractor: Option[Extractor] = _extractor
 
   /** Scorer to use for this model definition. This variable must be initialized. */
-  private[this] var _scorer: Option[Scorer] = None
-  private[this] def scorer: Scorer = {
+  private var _scorer: Option[Scorer] = None
+  private def scorer: Scorer = {
     _scorer.getOrElse {
       throw new IllegalStateException(
           "ScoreProducer is missing its scorer. Did setConf get called?")
@@ -98,8 +74,8 @@ final class ScoreProducer
   }
 
   /** A converter that configured row data to decode data generically. */
-  private[this] var _rowConverter: Option[GenericRowDataConverter] = None
-  private[this] def rowConverter: GenericRowDataConverter = {
+  private var _rowConverter: Option[GenericRowDataConverter] = None
+  private def rowConverter: GenericRowDataConverter = {
     _rowConverter.getOrElse {
       throw new IllegalStateException("ExtractScoreProducer is missing its row data converter. "
           + "Was setup() called?")
@@ -116,42 +92,17 @@ final class ScoreProducer
    * @param conf object that this producer should use.
    */
   override def setConf(conf: Configuration) {
-    // Load model definition.
-    val modelDefinitionJson: String = conf.get(ScoreProducer.modelDefinitionConfKey)
-    // scalastyle:off null
-    require(
-        modelDefinitionJson != null,
-        "A ModelDefinition was not specified!")
-    // scalastyle:on null
-    val modelDefinitionDef = ModelDefinition.fromJson(modelDefinitionJson)
-    _modelDefinition = Some(modelDefinitionDef)
-
-    // Load run profile.
-    val modelEnvironmentJson: String = conf.get(ScoreProducer.modelEnvironmentConfKey)
-    // scalastyle:off null
-    require(
-        modelEnvironmentJson != null,
-        "A ModelEnvironment was not specified!")
-    // scalastyle:on null
-    val modelEnvironmentDef = ModelEnvironment.fromJson(modelEnvironmentJson)
-    _modelEnvironment = Some(modelEnvironmentDef)
+    super.setConf(conf)
 
     // Make an instance of each requires phase.
-    val extractor = modelDefinitionDef
+    _extractor = modelDefinition
         .scoreExtractorClass
-        .get
-        .newInstance()
-        .asInstanceOf[Extractor]
-    val scorer = modelDefinitionDef
+        .map { _.newInstance() }
+    _scorer = modelDefinition
         .scorerClass
-        .get
-        .newInstance()
-        .asInstanceOf[Scorer]
-    _extractor = Some(extractor)
-    _scorer = Some(scorer)
+        .map { _.newInstance() }
 
-    // Finish setting the conf object.
-    super.setConf(conf)
+    require(_scorer.isDefined, "A scorer was not specified!")
   }
 
   /**
@@ -204,9 +155,9 @@ final class ScoreProducer
         .scoreEnvironment
         .get
         .keyValueStoreSpecs
-    extractor.keyValueStores = ModelJobUtils
+    scorer.keyValueStores = ModelJobUtils
         .wrapKvstoreReaders(scoreStoreDefs, context)
-    scorer.keyValueStores = extractor.keyValueStores
+    extractor.foreach { _.keyValueStores = scorer.keyValueStores }
 
     // Setup the row converter.
     val uriString = modelEnvironment
@@ -293,7 +244,7 @@ final class ScoreProducer
   }
 }
 
-object ScoreProducer {
+object ScoringProducer {
   /**
    * Configuration key addressing the JSON description of a
    * [[org.kiji.express.modeling.config.ModelDefinition]].
