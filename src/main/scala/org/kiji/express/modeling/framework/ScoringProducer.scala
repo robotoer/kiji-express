@@ -171,7 +171,7 @@ final class ScoringProducer
   }
 
   override def produce(input: KijiRowData, context: ProducerContext) {
-    val ExtractFn(extractFields, extract) = extractor.extractFn
+    val ExtractFn(extractFields, extract) = extractor.get.extractFn
     val ScoreFn(scoreFields, score) = scorer.scoreFn
 
     // Setup fields.

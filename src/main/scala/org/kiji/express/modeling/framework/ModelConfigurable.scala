@@ -69,7 +69,7 @@ trait ModelConfigurable
    * @param conf object that this producer should use.
    */
   override def setConf(conf: Configuration) {
-    super.setConf(conf)
+//    super.setConf(conf)
 
     // Load model definition.
     _modelDefinition = Option(conf.get(ScoringProducer.modelDefinitionConfKey))
