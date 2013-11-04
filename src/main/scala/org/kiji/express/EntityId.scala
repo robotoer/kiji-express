@@ -158,18 +158,16 @@ object EntityId {
    * between kiji-schema and kiji-express, removing the need for table URIs when creating
    * materialized EntityIdComponentss.
    *
-   * @param tableUri is the Java EntityId is from.
    * @param entityId is the Java EntityId to convert.
-   * @param configuration identifying the cluster to use when building EntityIds.
    */
   def fromJavaEntityId(entityId: JEntityId): EntityId = {
-    val hbaseKey = entityId.getHBaseRowKey()
+    val hbaseKey = entityId.getHBaseRowKey
 
     try {
       val components = entityId
-        .getComponents
-        .asScala
-        .toSeq
+          .getComponents
+          .asScala
+          .toIndexedSeq
       MaterializedEntityId(components)
     } catch {
       // This is an exception thrown when we try to access components of an entityId which has
@@ -185,11 +183,10 @@ object EntityId {
    * Creates a new EntityId with the components specified by the user.
    *
    * @param components of the EntityId to create.
-   *
    * @return the created entity id.
    */
   def apply(components: Any*): EntityId = {
-    MaterializedEntityId(components.toSeq.map { _.asInstanceOf[AnyRef] })
+    MaterializedEntityId(components.toIndexedSeq.map { _.asInstanceOf[AnyRef] })
   }
 
   /**
@@ -197,7 +194,6 @@ object EntityId {
    * HBase rowkey.
    *
    * @param encoded is the raw hbase rowkey.
-   *
    * @return the created entity id.
    */
   def apply(encoded: Array[Byte]): EntityId = {

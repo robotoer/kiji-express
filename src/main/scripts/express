@@ -350,7 +350,7 @@ function print_tool_usage() {
   echo
   echo 'USAGE'
   echo
-  echo '  express <command> [--libjars <list of dependency jars separated by colon> <args>'
+  echo '  express <command> [--libjars <list of dependency jars separated by colon>] [<args>]'
   echo
   echo 'COMMANDS'
   echo

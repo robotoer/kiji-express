@@ -19,29 +19,17 @@
 
 package org.kiji.express.flow.framework.hfile
 
-import com.twitter.scalding._
-import com.twitter.scalding.Hdfs
-import org.apache.hadoop.mapred.JobConf
-import org.apache.hadoop.fs.Path
-import cascading.tap.hadoop.Hfs
-import cascading.util.Util
-import org.kiji.mapreduce.framework.HFileKeyValue
-import org.apache.hadoop.io.NullWritable
-import org.apache.hadoop.fs.FileSystem
-import cascading.flow.Flow
 import scala.transient
-import cascading.flow.Flow
-import cascading.util.Util
-import java.util.Properties
-import scala.collection.JavaConverters.collectionAsScalaIterableConverter
 
 import cascading.flow.Flow
-import cascading.flow.FlowListener
 import cascading.tap.hadoop.Hfs
 import cascading.util.Util
-import com.twitter.scalding.HadoopMode
+import com.twitter.scalding.Args
+import com.twitter.scalding.HadoopTest
 import com.twitter.scalding.Hdfs
-import com.twitter.scalding._
+import com.twitter.scalding.Job
+import com.twitter.scalding.Mode
+import com.twitter.scalding.WritableSequenceFile
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
@@ -49,8 +37,6 @@ import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.mapred.JobConf
 
 import org.kiji.express.flow.KijiJob
-import org.kiji.express.flow.framework.LocalKijiTap
-import org.kiji.express.util.PipeConversions
 import org.kiji.mapreduce.framework.HFileKeyValue
 
 /**
@@ -77,23 +63,19 @@ class HFileKijiJob(args: Args) extends KijiJob(args) {
 
   @transient
   lazy private val jobConf: Configuration = implicitly[Mode] match {
-    case Hdfs(_, configuration) => {
-      configuration
-    }
-    case HadoopTest(configuration, _) => {
-      configuration
-    }
+    case Hdfs(_, configuration) => configuration
+    case HadoopTest(configuration, _) => configuration
     case _ => new JobConf()
   }
 
   @transient
-  lazy val uniqTempFolder = makeTemporaryPathDirString("HFileDumper")
+  lazy val uniqTempFolder: String = makeTemporaryPathDirString("HFileDumper")
 
-  val tempPath = new Path(Hfs.getTempPath(jobConf.asInstanceOf[JobConf]), uniqTempFolder).toString
+  val tempPath: String = new Path(Hfs.getTempPath(jobConf.asInstanceOf[JobConf]), uniqTempFolder).toString
 
   override def config(implicit mode: Mode): Map[AnyRef, AnyRef] = {
     val baseConfig = super.config(mode)
-    baseConfig ++ Map(HFileKijiOutput.TEMP_HFILE_OUTPUT_KEY -> tempPath.toString())
+    baseConfig ++ Map(HFileKijiOutput.TEMP_HFILE_OUTPUT_KEY -> tempPath.toString)
   }
 
   override def buildFlow(implicit mode: Mode): Flow[_] = {
@@ -115,11 +97,11 @@ class HFileKijiJob(args: Args) extends KijiJob(args) {
   }
 
   // Borrowed from Hfs#makeTemporaryPathDirString
-  private def makeTemporaryPathDirString(name: String) = {
+  private def makeTemporaryPathDirString(name: String): String = {
     // _ is treated as a hidden file, so wipe them out
     val name2 = name.replaceAll("^[_\\W\\s]+", "")
 
-    val name3 = if (name2.isEmpty()) {
+    val name3 = if (name2.isEmpty) {
       "temp-path"
     } else {
       name2
@@ -137,13 +119,9 @@ class HFileKijiJob(args: Args) extends KijiJob(args) {
 private final class HFileMapJob(args: Args) extends HFileKijiJob(args) {
 
   override def next: Option[Job] = {
-    val conf: Configuration = implicitly[Mode] match {
-      case Hdfs(_, configuration) => {
-        configuration
-      }
-      case HadoopTest(configuration, _) => {
-        configuration
-      }
+    val conf = implicitly[Mode] match {
+      case Hdfs(_, configuration) => configuration
+      case HadoopTest(configuration, _) => configuration
       case _ => new JobConf()
     }
     val fs = FileSystem.get(conf)
@@ -153,5 +131,5 @@ private final class HFileMapJob(args: Args) extends HFileKijiJob(args) {
   }
 
   WritableSequenceFile[HFileKeyValue, NullWritable](args("input"), ('keyValue, 'bogus))
-      .write(new HFileSource(args(TableOutputArgName),args(HFileOutputArgName)))
+      .write(new HFileSource(args(TableOutputArgName), args(HFileOutputArgName)))
 }
