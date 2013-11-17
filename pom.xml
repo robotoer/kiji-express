@@ -27,6 +27,7 @@
 
   <modules>
     <module>kiji-express-flow</module>
+    <module>kiji-express-tools</module>
   </modules>
 
   <properties>
