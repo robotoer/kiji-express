@@ -60,6 +60,7 @@ import org.kiji.express.flow.util.Resources.doAndRelease
 import org.kiji.express.flow.util.SpecificCellSpecs
 import org.kiji.mapreduce.framework.KijiConfKeys
 import org.kiji.schema.ColumnVersionIterator
+import org.kiji.schema.{ EntityId => JEntityId }
 import org.kiji.schema.EntityIdFactory
 import org.kiji.schema.Kiji
 import org.kiji.schema.KijiCell
@@ -103,9 +104,14 @@ class KijiScheme(
     private[express] val timeRange: TimeRange,
     private[express] val timestampField: Option[Symbol],
     @transient private[express] val inputColumns: Map[String, ColumnInputSpec] = Map(),
-    @transient private[express] val outputColumns: Map[String, ColumnOutputSpec] = Map())
-    extends Scheme[JobConf, RecordReader[KijiKey, KijiValue], OutputCollector[_, _],
-        KijiSourceContext, KijiSinkContext] {
+    @transient private[express] val outputColumns: Map[String, ColumnOutputSpec] = Map()
+) extends Scheme[
+    JobConf,
+    RecordReader[Container[JEntityId], Container[KijiRowData]],
+    OutputCollector[_, _],
+    KijiSourceContext,
+    KijiSinkContext
+] {
   import KijiScheme._
 
   // ColumnInputSpec and ColumnOutputSpec objects cannot be correctly serialized via
@@ -134,13 +140,17 @@ class KijiScheme(
    */
   override def sourceConfInit(
       flow: FlowProcess[JobConf],
-      tap: Tap[JobConf, RecordReader[KijiKey, KijiValue], OutputCollector[_, _]],
-      conf: JobConf) {
+      tap: Tap[
+          JobConf,
+          RecordReader[Container[JEntityId], Container[KijiRowData]],
+          OutputCollector[_, _]
+      ],
+      conf: JobConf
+  ) {
     // Build a data request.
     val request: KijiDataRequest = buildRequest(timeRange, _inputColumns.get.values)
 
     // Write all the required values to the job's configuration object.
-    conf.setInputFormat(classOf[KijiInputFormat])
     conf.set(
         KijiConfKeys.KIJI_INPUT_DATA_REQUEST,
         Base64.encodeBase64String(SerializationUtils.serialize(request)))
@@ -157,7 +167,11 @@ class KijiScheme(
    */
   override def sourcePrepare(
       flow: FlowProcess[JobConf],
-      sourceCall: SourceCall[KijiSourceContext, RecordReader[KijiKey, KijiValue]]) {
+      sourceCall: SourceCall[
+          KijiSourceContext,
+          RecordReader[Container[JEntityId], Container[KijiRowData]]
+      ]
+  ) {
     val tableUriProperty = flow.getStringProperty(KijiConfKeys.KIJI_INPUT_TABLE_URI)
     val uri: KijiURI = KijiURI.newBuilder(tableUriProperty).build()
 
@@ -178,13 +192,17 @@ class KijiScheme(
    */
   override def source(
       flow: FlowProcess[JobConf],
-      sourceCall: SourceCall[KijiSourceContext, RecordReader[KijiKey, KijiValue]]): Boolean = {
+      sourceCall: SourceCall[
+          KijiSourceContext,
+          RecordReader[Container[JEntityId], Container[KijiRowData]]
+      ]
+  ): Boolean = {
     // Get the current key/value pair.
     val KijiSourceContext(value, tableUri) = sourceCall.getContext
 
     // Get the next row.
     if (sourceCall.getInput.next(null, value)) {
-      val row: KijiRowData = value.get()
+      val row: KijiRowData = value.getContents()
 
       // Build a tuple from this row.
       val result: Tuple = rowToTuple(
@@ -216,7 +234,11 @@ class KijiScheme(
    */
   override def sourceCleanup(
       flow: FlowProcess[JobConf],
-      sourceCall: SourceCall[KijiSourceContext, RecordReader[KijiKey, KijiValue]]) {
+      sourceCall: SourceCall[
+          KijiSourceContext,
+          RecordReader[Container[JEntityId], Container[KijiRowData]]
+      ]
+  ) {
     sourceCall.setContext(null)
   }
 
@@ -231,8 +253,13 @@ class KijiScheme(
    */
   override def sinkConfInit(
       flow: FlowProcess[JobConf],
-      tap: Tap[JobConf, RecordReader[KijiKey, KijiValue], OutputCollector[_, _]],
-      conf: JobConf) {
+      tap: Tap[
+          JobConf,
+          RecordReader[Container[JEntityId], Container[KijiRowData]],
+          OutputCollector[_, _]
+      ],
+      conf: JobConf
+  ) {
     // No-op since no configuration parameters need to be set to encode data for Kiji.
   }
 
@@ -245,7 +272,8 @@ class KijiScheme(
    */
   override def sinkPrepare(
       flow: FlowProcess[JobConf],
-      sinkCall: SinkCall[KijiSinkContext, OutputCollector[_, _]]) {
+      sinkCall: SinkCall[KijiSinkContext, OutputCollector[_, _]]
+  ) {
     // Open a table writer.
     val uriString: String = flow.getConfigCopy.get(KijiConfKeys.KIJI_OUTPUT_TABLE_URI)
     val uri: KijiURI = KijiURI.newBuilder(uriString).build()
@@ -267,7 +295,8 @@ class KijiScheme(
    */
   override def sink(
       flow: FlowProcess[JobConf],
-      sinkCall: SinkCall[KijiSinkContext, OutputCollector[_, _]]) {
+      sinkCall: SinkCall[KijiSinkContext, OutputCollector[_, _]]
+  ) {
     // Retrieve writer from the scheme's context.
     val KijiSinkContext(writer, tableUri, kiji, layout) = sinkCall.getContext
 
@@ -293,7 +322,8 @@ class KijiScheme(
    */
   override def sinkCleanup(
       flow: FlowProcess[JobConf],
-      sinkCall: SinkCall[KijiSinkContext, OutputCollector[_, _]]) {
+      sinkCall: SinkCall[KijiSinkContext, OutputCollector[_, _]]
+  ) {
     sinkCall.getContext.kiji.release()
     sinkCall.getContext.kijiTableWriter.close()
     sinkCall.setContext(null)
@@ -373,7 +403,7 @@ object KijiScheme {
     val entityId: EntityId = EntityId.fromJavaEntityId(row.getEntityId)
     result.add(entityId)
 
-    def rowToTupleColumnFamily(cf: ColumnFamilyInputSpec): Unit = {
+    def rowToTupleColumnFamily(cf: ColumnFamilyInputSpec) {
       if (row.containsColumn(cf.family)) {
         cf.paging match {
           case PagingSpec.Off => {
@@ -404,7 +434,7 @@ object KijiScheme {
       }
     }
 
-    def rowToTupleQualifiedColumn(qc: QualifiedColumnInputSpec): Unit = {
+    def rowToTupleQualifiedColumn(qc: QualifiedColumnInputSpec) {
       if (row.containsColumn(qc.family, qc.qualifier)) {
         qc.paging match {
           case PagingSpec.Off => {
