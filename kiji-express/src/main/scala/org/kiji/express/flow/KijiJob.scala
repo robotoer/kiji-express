@@ -29,11 +29,7 @@ import cascading.flow.hadoop.util.HadoopUtil
 import cascading.pipe.Checkpoint
 import cascading.pipe.Pipe
 import cascading.tap.Tap
-import com.twitter.scalding.Args
-import com.twitter.scalding.HadoopTest
-import com.twitter.scalding.Hdfs
-import com.twitter.scalding.Job
-import com.twitter.scalding.Mode
+import com.twitter.scalding._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.hbase.security.User
@@ -50,6 +46,10 @@ import org.kiji.express.flow.framework.hfile.HFileFlowStepStrategy
 import org.kiji.express.flow.framework.hfile.HFileKijiTap
 import org.kiji.express.flow.util.AvroTupleConversions
 import org.kiji.express.flow.util.PipeConversions
+import cascading.tuple.collect.SpillableProps
+import cascading.pipe.assembly.AggregateBy
+import com.twitter.chill.config.{ConfiguredInstantiator, ScalaMapConfig}
+import org.kiji.express.flow.framework.serialization.KryoKiji
 
 /**
  * KijiJob is KijiExpress's extension of Scalding's `Job`, and users should extend it when writing
@@ -67,49 +67,49 @@ class KijiJob(args: Args = Args(Nil))
     with PipeConversions
     with AvroTupleConversions {
 
-  override def validateSources(mode: Mode): Unit = {
-    val taps: List[Tap[_, _, _]] = (
-        flowDef.getSources.values.asScala.toList
-        ++ flowDef.getSinks.values.asScala.toList
-        ++ flowDef.getCheckpoints.values.asScala.toList)
+//  override def validateSources(mode: Mode): Unit = {
+//    val taps: List[Tap[_, _, _]] = (
+//        flowDef.getSources.values.asScala.toList
+//        ++ flowDef.getSinks.values.asScala.toList
+//        ++ flowDef.getCheckpoints.values.asScala.toList)
+//
+//    // Retrieve the configuration
+//    val conf: Configuration = HBaseConfiguration.create()
+//    mode match {
+//      case Hdfs(_, configuration) => {
+//        HBaseConfiguration.merge(conf, configuration)
+//
+//        // Obtain any necessary tokens for the current user if security is enabled.
+//        if (User.isHBaseSecurityEnabled(conf)) {
+//          val user = UserGroupInformation.getCurrentUser
+//          if (user.getTokens == null || user.getTokens.isEmpty) {
+//            TokenUtil.obtainAndCacheToken(conf, user)
+//          }
+//        }
+//      }
+//      case HadoopTest(configuration, _) => {
+//        HBaseConfiguration.merge(conf, configuration)
+//      }
+//      case _ =>
+//    }
+//
+//    // Validate that the Kiji parts of the sources (tables, columns) are valid and exist.
+//    taps.foreach {
+//      case tap: KijiTap => tap.validate(conf)
+//      case tap: HFileKijiTap => tap.validate(conf)
+//      case tap: LocalKijiTap => {
+//        val properties: Properties = new Properties()
+//        properties.putAll(HadoopUtil.createProperties(conf))
+//        tap.validate(properties)
+//      }
+//      case _ => // No Kiji parts to verify.
+//    }
+//
+//    // Call any validation that scalding's Job class does.
+//    super.validate
+//  }
 
-    // Retrieve the configuration
-    val conf: Configuration = HBaseConfiguration.create()
-    mode match {
-      case Hdfs(_, configuration) => {
-        HBaseConfiguration.merge(conf, configuration)
-
-        // Obtain any necessary tokens for the current user if security is enabled.
-        if (User.isHBaseSecurityEnabled(conf)) {
-          val user = UserGroupInformation.getCurrentUser
-          if (user.getTokens == null || user.getTokens.isEmpty) {
-            TokenUtil.obtainAndCacheToken(conf, user)
-          }
-        }
-      }
-      case HadoopTest(configuration, _) => {
-        HBaseConfiguration.merge(conf, configuration)
-      }
-      case _ =>
-    }
-
-    // Validate that the Kiji parts of the sources (tables, columns) are valid and exist.
-    taps.foreach {
-      case tap: KijiTap => tap.validate(conf)
-      case tap: HFileKijiTap => tap.validate(conf)
-      case tap: LocalKijiTap => {
-        val properties: Properties = new Properties()
-        properties.putAll(HadoopUtil.createProperties(conf))
-        tap.validate(properties)
-      }
-      case _ => // No Kiji parts to verify.
-    }
-
-    // Call any validation that scalding's Job class does.
-    super.validateSources(mode)
-  }
-
-  override def buildFlow(implicit mode : Mode): Flow[_] = {
+  override def buildFlow: Flow[_] = {
     checkpointHFileSink()
     val flow = super.buildFlow
     // Here we set the strategy to change the sink steps since we are dumping to HFiles.
@@ -150,8 +150,8 @@ class KijiJob(args: Args = Args(Nil))
     }
   }
 
-  override def config(implicit mode: Mode): Map[AnyRef, AnyRef] = {
-    val baseConfig = super.config(mode)
+  override def config(): Map[AnyRef, AnyRef] = {
+    val baseConfig: Map[AnyRef, AnyRef] = super.config
 
     // We configure as is done in Scalding's Job, but then append to mapred.child.java.opts to
     // disable schema validation. This system property is only useful for KijiSchema v1.1. In newer
@@ -159,16 +159,18 @@ class KijiJob(args: Args = Args(Nil))
     val disableValidation = " -Dorg.kiji.schema.impl.AvroCellEncoder.SCHEMA_VALIDATION=DISABLED"
     val oldJavaOptions = baseConfig.get("mapred.child.java.opts").getOrElse("")
 
-    // Add support for our Kryo Avro serializers (see org.kiji.express.flow.framework.KryoKiji).
-    val oldSerializations = baseConfig("io.serializations").toString
-    require(oldSerializations.contains("com.twitter.scalding.serialization.KryoHadoop"))
-    val newSerializations = oldSerializations.replaceFirst(
-        "com.twitter.scalding.serialization.KryoHadoop",
-        "org.kiji.express.flow.framework.serialization.KryoKiji")
+    // These are ignored if set in mode.config
+    val lowPriorityDefaults =
+      Map(SpillableProps.LIST_THRESHOLD -> defaultSpillThreshold.toString,
+        SpillableProps.MAP_THRESHOLD -> defaultSpillThreshold.toString,
+        AggregateBy.AGGREGATE_BY_THRESHOLD -> defaultSpillThreshold.toString
+      )
+    // Set up the keys for chill
+    val chillConf = ScalaMapConfig(lowPriorityDefaults)
+    ConfiguredInstantiator.setReflect(chillConf, classOf[KryoKiji])
 
     // Append all the new keys.
     baseConfig +
-        ("mapred.child.java.opts" -> (oldJavaOptions + disableValidation)) +
-        ("io.serializations" -> newSerializations)
+        ("mapred.child.java.opts" -> (oldJavaOptions + disableValidation))
   }
 }

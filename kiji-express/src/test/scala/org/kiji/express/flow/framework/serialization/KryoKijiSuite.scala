@@ -78,6 +78,7 @@ class KryoKijiSuite
 
   serDeTest("Schema", "Kryo", recordSchema) { actual =>
     // Use cascading.kryo to mimic scalding's actual behavior.
+
     val kryo = new Kryo()
     val kryoFactory = new KryoFactory(HBaseConfiguration.create())
     val registrations = Seq(
@@ -119,8 +120,8 @@ class KryoKijiSuite
     serDeTest(inputName, "KryoKiji", input) { actual =>
       // Setup a Kryo object using KryoKiji.
       val kryo = new Kryo()
-      val kryoKiji = new KryoKiji()
-      kryoKiji.decorateKryo(kryo)
+//      val kryoKiji = new KryoKiji()
+//      kryoKiji.decorateKryo(kryo)
 
       // Serialize and deserialize the input data.
       kryoDeepCopy(kryo, actual)

@@ -44,7 +44,7 @@ import org.kiji.express.flow.util.AvroGenericTupleConverter
 @ApiAudience.Public
 @ApiStability.Stable
 @Inheritance.Sealed
-class KijiPipe(private[express] val pipe: Pipe) extends TupleConversions {
+class KijiPipe(private[express] val pipe: Pipe) {
 
   /**
    * Packs the specified fields into an Avro [[org.apache.avro.generic.GenericRecord]].  The

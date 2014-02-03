@@ -17,8 +17,7 @@ import org.kiji.express.flow.util.AvroTupleConversions
 @ApiAudience.Framework
 @ApiStability.Stable
 trait ExpressConversions
-    extends TupleConversions
-    with FieldConversions
+    extends FieldConversions
     with AvroTupleConversions {
 
   /**

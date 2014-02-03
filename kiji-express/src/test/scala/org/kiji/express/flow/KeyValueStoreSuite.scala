@@ -26,8 +26,22 @@ import java.io.FileInputStream
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
+import cascading.pipe.Pipe
+import cascading.flow.FlowDef
+import cascading.pipe.Each
+import cascading.tuple.Fields
 import com.google.common.io.Files
-import com.twitter.scalding._
+import com.twitter.scalding.FieldConversions
+import com.twitter.scalding.Hdfs
+import com.twitter.scalding.TupleConversions
+import com.twitter.scalding.TupleSetter
+import com.twitter.scalding.TupleConverter
+import com.twitter.scalding.Mode
+import com.twitter.scalding.NullSource
+import com.twitter.scalding.SideEffectMapFunction
+import com.twitter.scalding.Args
+import com.twitter.scalding.RichPipe
+import com.twitter.scalding.IterableSource
 import org.apache.avro.util.Utf8
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
@@ -39,13 +53,13 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import org.kiji.express.KijiSuite
+import org.kiji.schema.KijiRowKeyComponents
 import org.kiji.mapreduce.kvstore.KeyValueStore
 import org.kiji.mapreduce.kvstore.KeyValueStoreReader
 import org.kiji.mapreduce.kvstore.impl.XmlKeyValueStoreParser
 import org.kiji.mapreduce.kvstore.lib.InMemoryMapKeyValueStore
 import org.kiji.mapreduce.kvstore.lib.TextFileKeyValueStore
 import org.kiji.schema.Kiji
-import org.kiji.schema.KijiRowKeyComponents
 import org.kiji.schema.KijiTable
 import org.kiji.schema.KijiURI
 import org.kiji.schema.shell.api.Client
@@ -93,10 +107,6 @@ class KeyValueStoreSuite extends KijiSuite {
   }
 
   test("KeyValueStores with KijiTables and in-memory maps work") {
-
-    // Ensure that the mode is what we need.
-    Mode.mode = Hdfs(strict = false, conf = HBaseConfiguration.create())
-
     //--------------------------------------------------------------------------------
     // Create a KijiTable of users and their favorite fruits
     //
@@ -151,15 +161,15 @@ class KeyValueStoreSuite extends KijiSuite {
           .withQualifier("city").withValue("San Jose")
           .build()
         })
-    val jobTest =
-        new KeyValueStoreSuite.KvsFruitJob(Args("--fruit " + fruitUri + " --city " + cityUri))
+
+    val args = Args("--fruit " + fruitUri + " --city " + cityUri)
+    val argsWithMode = Mode.putMode(new Hdfs(strict = false, conf = HBaseConfiguration.create()), args)
+    val jobTest = new KeyValueStoreSuite.KvsFruitJob(argsWithMode)
     jobTest.run
   }
 
   test("KeyValueStore works with delimited file.") {
 
-    // Ensure that the mode is what we need.
-    Mode.mode = Hdfs(strict = false, conf = HBaseConfiguration.create())
 
     val outputDir = Files.createTempDir()
     val csvFile = new File(outputDir.getAbsolutePath + "/nba.csv")
@@ -172,15 +182,15 @@ class KeyValueStoreSuite extends KijiSuite {
         |Magic,Lakers
         |Bird,Celtics""".stripMargin)
     bw.close()
-    val jobTest = new KeyValueStoreSuite.KvsNbaJob(Args("--nba-csv " + csvFile.getAbsolutePath))
+    val args = new Args(Map(("--nba-csv", List(csvFile.getAbsolutePath))))
+    val argsWithMode = Mode.putMode(Hdfs(strict = false, conf = HBaseConfiguration.create()), args)
+    val jobTest = new KeyValueStoreSuite.KvsNbaJob(argsWithMode)
     jobTest.run
     FileUtils.deleteDirectory(outputDir)
   }
 
   test("KeyValueStore works with XML configuration file.") {
 
-    // Ensure that the mode is what we need.
-    Mode.mode = Hdfs(strict = false, conf = HBaseConfiguration.create())
 
     //--------------------------------------------------------------------------------
     // Create a KijiTable of NBA players and their teams
@@ -229,7 +239,9 @@ class KeyValueStoreSuite extends KijiSuite {
         | </stores>""".format(nbaUri).stripMargin)
     bwXml.close()
 
-    val jobTest = new KeyValueStoreSuite.KvsNbaJob2(Args("--kvs-xml " + xmlFile.getAbsolutePath))
+    val args = new Args(Map(("--kvs-xml ", List(xmlFile.getAbsolutePath))))
+    val argsWithMode = Mode.putMode(Hdfs(strict = false, conf = HBaseConfiguration.create()), args)
+    val jobTest = new KeyValueStoreSuite.KvsNbaJob2(argsWithMode)
     jobTest.run
     FileUtils.deleteDirectory(outputDir)
   }

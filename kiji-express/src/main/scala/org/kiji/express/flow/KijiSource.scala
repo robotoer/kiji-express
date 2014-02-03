@@ -139,20 +139,12 @@ final class KijiSource private[express] (
           rowRangeSpec,
           rowFilterSpec)
 
-  /**
-   * Creates a Scheme that writes to/reads from a Kiji table for usage with
-   * the hadoop runner.
-   */
-  override val hdfsScheme: Scheme[JobConf, RecordReader[_, _], OutputCollector[_, _], _, _] =
+  val hdfsScheme: Scheme[JobConf, RecordReader[_, _], OutputCollector[_, _], _, _] =
     HadoopSchemeInstance(kijiScheme)
 
-  /**
-   * Creates a Scheme that writes to/reads from a Kiji table for usage with
-   * the local runner.
-   */
-  override val localScheme: LocalScheme = localKijiScheme
-      // This cast is required due to Scheme being defined with invariant type parameters.
-      .asInstanceOf[LocalScheme]
+//  val localScheme: LocalScheme = localKijiScheme
+//    // This cast is required due to Scheme being defined with invariant type parameters.
+//    .asInstanceOf[LocalScheme]
 
   /**
    * Create a connection to the physical data source (also known as a Tap in Cascading)
@@ -229,8 +221,7 @@ final class KijiSource private[express] (
         }
       }
 
-      // Delegate any other tap types to Source's default behaviour.
-      case _ => super.createTap(readOrWrite)(mode)
+      case _ => throw new RuntimeException("Trying to create invalid tap")
     }
   }
 
@@ -332,7 +323,7 @@ private[express] object KijiSource {
    */
   private def populateTestTable(
       tableUri: KijiURI,
-      rows: Buffer[Tuple],
+      rows: Option[Buffer[Tuple]],
       fields: Fields,
       configuration: Configuration) {
     doAndRelease(Kiji.Factory.open(tableUri)) { kiji: Kiji =>
@@ -345,7 +336,7 @@ private[express] object KijiSource {
 
       // Write the desired rows to the table.
       withKijiTableWriter(tableUri, configuration) { writer: KijiTableWriter =>
-        rows.foreach { row: Tuple =>
+        rows.get.foreach { row: Tuple =>
           val tupleEntry = new TupleEntry(fields, row)
           val iterator = fields.iterator()
 
@@ -420,7 +411,7 @@ private[express] object KijiSource {
    * @param rowFilterSpec is the specification for which row filter to apply.
    */
   private class TestLocalKijiScheme(
-      val buffer: Buffer[Tuple],
+      val buffer: Option[Buffer[Tuple]],
       uri: KijiURI,
       timeRange: TimeRangeSpec,
       timestampField: Option[Symbol],
@@ -486,7 +477,7 @@ private[express] object KijiSource {
                   }
                   .toSeq
 
-              buffer += new Tuple(newTupleValues: _*)
+              buffer.get += new Tuple(newTupleValues: _*)
             }
           }
         }

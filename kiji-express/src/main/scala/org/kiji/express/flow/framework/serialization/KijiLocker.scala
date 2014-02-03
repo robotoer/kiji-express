@@ -23,6 +23,8 @@ import com.esotericsoftware.kryo.io.Output
 import com.twitter.bijection.Injection
 import com.twitter.chill.KryoBase
 import com.twitter.chill.KryoInjectionInstance
+import com.twitter.chill.KryoPool
+import com.twitter.chill.KryoInstantiator
 import org.objenesis.strategy.StdInstantiatorStrategy
 
 import org.kiji.annotations.ApiAudience
@@ -56,37 +58,40 @@ class KijiLocker[T <: AnyRef](@transient private var t: T) extends java.io.Seria
    *
    * @return an Object <-> Array[Byte] Injection.
    */
-  private def injection: Injection[AnyRef, Array[Byte]] = {
-    val kryo = {
-      val kryo = new KryoBase
-      kryo.setRegistrationRequired(false)
-      kryo.setInstantiatorStrategy(new StdInstantiatorStrategy)
-      new KryoKiji().decorateKryo(kryo)
-      kryo
-    }
-    new KryoInjectionInstance(kryo, new Output( 1 << 10, 1 << 24))
-  }
-
-  /**
-   * Serialized value of t.
-   */
-  private val tBytes: Array[Byte] = injection(t)
-
-  /**
-   * Retrieve the value wrapped by this
-   * [[org.kiji.express.flow.framework.serialization.KijiLocker]].
-   *
-   * @return the value
-   */
-  def get: T = {
-    if(t == null) {
-      // we were serialized
-      t = injection
-          .invert(tBytes)
-          .getOrElse(throw new RuntimeException("Deserialization failed in KijiLocker."))
-          .asInstanceOf[T]
-    }
-    t
-  }
+//  private def injection: Injection[AnyRef, Array[Byte]] = {
+////    val kryo = {
+////      val kryo = new KryoBase
+////      kryo.setRegistrationRequired(false)
+////      kryo.setInstantiatorStrategy(new StdInstantiatorStrategy)
+////      new KryoKiji().decorateKryo(kryo)
+////      kryo
+////    }
+//
+//    val POOL_SIZE = 10
+//    val kryoPool = KryoPool.withBuffer(POOL_SIZE, new KryoInstantiator(), 1 << 10, 1 << 24)
+//    new KryoInjectionInstance(kryoPool)
+//  }
+//
+//  /**
+//   * Serialized value of t.
+//   */
+//  private val tBytes: Array[Byte] = injection(t)
+//
+//  /**
+//   * Retrieve the value wrapped by this
+//   * [[org.kiji.express.flow.framework.serialization.KijiLocker]].
+//   *
+//   * @return the value
+//   */
+//  def get: T = {
+//    if(t == null) {
+//      // we were serialized
+//      t = injection
+//          .invert(tBytes)
+//          .getOrElse(throw new RuntimeException("Deserialization failed in KijiLocker."))
+//          .asInstanceOf[T]
+//    }
+//    t
+//  }
 }
 

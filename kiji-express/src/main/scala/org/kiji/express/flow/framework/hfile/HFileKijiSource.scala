@@ -77,12 +77,12 @@ final case class HFileKijiSource private[express] (
 
   private val hfileScheme = new HFileKijiScheme(timestampField, convertKeysToStrings(columns))
 
-  /**
-   * Creates a Scheme that writes to/reads from a Kiji table for usage with
-   * the hadoop runner.
-   */
-  override val hdfsScheme: Scheme[JobConf, RecordReader[_, _], OutputCollector[_, _], _, _] =
-    HadoopSchemeInstance(hfileScheme)
+//  /**
+//   * Creates a Scheme that writes to/reads from a Kiji table for usage with
+//   * the hadoop runner.
+//   */
+//  override val hdfsScheme: Scheme[JobConf, RecordReader[_, _], OutputCollector[_, _], _, _] =
+//    HadoopSchemeInstance(hfileScheme)
 
   /**
    * Create a connection to the physical data source (also known as a Tap in Cascading)

@@ -20,6 +20,7 @@
 package org.kiji.express.flow.framework.serialization
 
 import com.esotericsoftware.kryo.Kryo
+import com.twitter.chill.config.Config
 import com.twitter.scalding.serialization.KryoHadoop
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericContainer
@@ -29,6 +30,7 @@ import org.kiji.annotations.ApiAudience
 import org.kiji.annotations.ApiStability
 import org.kiji.annotations.Inheritance
 
+
 /**
  * Kryo specification that adds avro schema, generic record, and specific record serialization
  * support. Used with [[org.kiji.express.flow.KijiJob]].
@@ -36,9 +38,10 @@ import org.kiji.annotations.Inheritance
 @ApiAudience.Private
 @ApiStability.Stable
 @Inheritance.Sealed
-class KryoKiji extends KryoHadoop {
-  override def decorateKryo(kryo: Kryo) {
-    super.decorateKryo(kryo)
+class KryoKiji(config: Config) extends KryoHadoop(config) {
+  override def newKryo: Kryo = {
+    val kryo = super.newKryo()
+
 
     kryo.addDefaultSerializer(classOf[Schema], classOf[AvroSchemaSerializer])
 
@@ -47,5 +50,6 @@ class KryoKiji extends KryoHadoop {
     //     a subclass of GenericContainer.
     kryo.addDefaultSerializer(classOf[SpecificRecord], classOf[AvroSpecificSerializer])
     kryo.addDefaultSerializer(classOf[GenericContainer], classOf[AvroGenericSerializer])
+    kryo
   }
 }

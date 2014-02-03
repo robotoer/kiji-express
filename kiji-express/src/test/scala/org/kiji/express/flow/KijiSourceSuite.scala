@@ -45,11 +45,11 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
 
   /* Undo all changes to hdfs mode. */
   before {
-    Mode.mode = Local(strict = true)
+    val nilArgsWithMode = Mode.putMode(Local(strictSources = true), Args(Nil))
   }
 
   after {
-    Mode.mode = Local(strict = true)
+    val nilArgsWithMode = Mode.putMode(Local(strictSources = true), Args(Nil))
   }
 
   setupKijiTest()
