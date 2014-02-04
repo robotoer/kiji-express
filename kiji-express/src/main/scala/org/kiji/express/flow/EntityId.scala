@@ -269,8 +269,11 @@ object EntityId {
    */
   @ApiAudience.Private
   @ApiStability.Stable
-  final private[express] case class MaterializedEntityId(override val components: Seq[AnyRef])
-      extends EntityId {
+//  final private[express] case class MaterializedEntityId(override val components: Vector[AnyRef])
+  final private[express] case class MaterializedEntityId(
+//      override val components: IndexedSeq[AnyRef]
+      override val components: Seq[AnyRef]
+  ) extends EntityId {
 
     override def toJavaEntityId(eidFactory: EntityIdFactory): JEntityId = {
       eidFactory.getEntityId(components.asJava)
@@ -278,4 +281,10 @@ object EntityId {
 
     override def hashCode(): Int = components.hashCode()
   }
+//
+//  private[express] object MaterializedEntityId {
+//    private[express] def apply(components: Iterable[AnyRef]): MaterializedEntityId = {
+//      MaterializedEntityId(Vector(components))
+//    }
+//  }
 }

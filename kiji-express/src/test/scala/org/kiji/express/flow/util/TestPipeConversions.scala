@@ -65,6 +65,11 @@ class TestPipe(val pipe: Pipe)
     def ef(mySet: mutable.Set[A]): Unit = {
       val output: Set[A] = mySet.toSet
 
+      require(output.size == expected.size)
+      output.foreach { tuple =>
+        require(expected.contains(tuple), "%s is missing %s".format(expected, tuple))
+      }
+
       if (expected == output) {
         TestPipe.logger.debug("Confirmed values on pipe!")
       } else {

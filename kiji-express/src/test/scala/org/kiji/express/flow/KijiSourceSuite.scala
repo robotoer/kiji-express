@@ -30,7 +30,7 @@ import org.scalatest.BeforeAndAfter
 import org.scalatest.junit.JUnitRunner
 
 import org.kiji.express.avro.SimpleRecord
-import org.kiji.express.flow.util.ResourceUtil.doAndRelease
+import org.kiji.express.flow.util.ResourceUtil
 import org.kiji.express.flow.util.TestPipeConversions
 import org.kiji.express.flow.SchemaSpec.Specific
 import org.kiji.express.KijiSuite
@@ -60,10 +60,10 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   val kiji: Kiji = createTestKiji()
 
   /** Simple table layout to use for tests. The row keys are hashed. */
-  val simpleLayout: KijiTableLayout = layout(KijiTableLayouts.SIMPLE_TWO_COLUMNS)
+  val simpleLayout: KijiTableLayout = ResourceUtil.layout(KijiTableLayouts.SIMPLE_TWO_COLUMNS)
 
   /** Table layout using Avro schemas to use for tests. The row keys are formatted. */
-  val avroLayout: KijiTableLayout = layout("layout/avro-types.json")
+  val avroLayout: KijiTableLayout = ResourceUtil.layout("layout/avro-types.json")
 
   /* Undo all changes to hdfs mode. */
 //  before {
@@ -105,10 +105,11 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   )
 
   test("a word-count job that reads from a Kiji table is run using Scalding's local mode") {
-    val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
-      writeToTable(table, wordCountInput)
-      table.getURI.toString
-    }
+    val uri: String =
+        ResourceUtil.doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
+          writeToTable(table, wordCountInput)
+          table.getURI.toString
+        }
     // Create test Kiji table.
     val source = KijiInput.builder
             .withTableURI(uri)
@@ -122,10 +123,11 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   test("a word-count job that reads from a Kiji table is run using Hadoop") {
     Mode.mode = Hdfs(strict = true, conf = new JobConf(getConf))
 
-    val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
-      writeToTable(table, wordCountInput)
-      table.getURI.toString
-    }
+    val uri: String =
+        ResourceUtil.doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
+          writeToTable(table, wordCountInput)
+          table.getURI.toString
+        }
 
     val source = KijiInput.builder
             .withTableURI(uri)
@@ -150,9 +152,10 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
 
   test("An import job with multiple timestamps imports all timestamps in local mode.") {
     // Create test Kiji table.
-    val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
-      table.getURI.toString
-    }
+    val uri: String =
+        ResourceUtil.doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
+          table.getURI.toString
+        }
     val source = IterableSource(importMultipleTimestamps, new Fields("line"))
     // Build test job.
     new MultipleTimestampsImportJob(source, uri).run
@@ -164,9 +167,10 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   test("An import with multiple timestamps imports all timestamps using Hadoop.") {
     Mode.mode = Hdfs(strict = true, conf = new JobConf(getConf))
 
-    val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
-      table.getURI.toString
-    }
+    val uri: String =
+        ResourceUtil.doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
+          table.getURI.toString
+        }
     val source = IterableSource(importMultipleTimestamps, new Fields("line"))
 
     // Build test job.
@@ -187,10 +191,11 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
 
   test("a job that requests wris gets them") {
     // Create test Kiji table.
-    val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
-      writeToTableWithTimestamp(table, versionCountInput)
-      table.getURI.toString
-    }
+    val uri: String =
+        ResourceUtil.doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
+          writeToTableWithTimestamp(table, versionCountInput)
+          table.getURI.toString
+        }
 
     // Expect up to two entries from each row.
     val expected: Set[(String, Int)] = Set(("two", 2), ("three", 2), ("hello", 1))
@@ -209,10 +214,11 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
 
   test("a job that requests a time range gets them") {
     // Create test Kiji table.
-    val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
-      writeToTableWithTimestamp(table, versionCountInput)
-      table.getURI.toString
-    }
+    val uri: String =
+        ResourceUtil.doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
+          writeToTableWithTimestamp(table, versionCountInput)
+          table.getURI.toString
+        }
 
     // Expect only the values with timestamp between 15 and 25.
     val expected: Set[(String, Int)] = Set(("two", 1), ("three", 1))
@@ -238,10 +244,11 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
 
   test("test conversion of column value of type string between java and scala in Hadoop mode") {
     // Create test Kiji table.
-    val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
-      writeToTableWithTimestamp(table, versionCountInput)
-      table.getURI.toString
-    }
+    val uri: String =
+        ResourceUtil.doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
+          writeToTableWithTimestamp(table, versionCountInput)
+          table.getURI.toString
+        }
 
     val expected: Set[(Boolean, Int)] = Set((true, 6))
     val testSource = KijiInput.builder
@@ -264,7 +271,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
     genericRecord.setSuppressKeyMaterialization(true)
 
     // Create test Kiji table.
-    val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
+    val uri: String = ResourceUtil.doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
       // Write the specific record to the table.
       val writer: KijiTableWriter = table.openTableWriter()
       writer.put(table.getEntityId("row01"), "family", "column3", 10L, genericRecord)
@@ -289,7 +296,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
     genericRecord.setSuppressKeyMaterialization(true)
 
     // Create test Kiji table.
-    val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
+    val uri: String = ResourceUtil.doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
       // Write the record to the table.
       val writer: KijiTableWriter = table.openTableWriter()
       writer.put(table.getEntityId("row01"), "family", "column3", 10L, genericRecord)
@@ -313,7 +320,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
     specificRecord.setSuppressKeyMaterialization(true)
 
     // Create test Kiji table.
-    val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
+    val uri: String = ResourceUtil.doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
       // Write the record to the table.
       val writer: KijiTableWriter = table.openTableWriter()
       writer.put(table.getEntityId("row01"), "family", "column3", 10L, specificRecord)
@@ -340,7 +347,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   // TODO: Tests below this line still use JobTest and should be rewritten.
   test("A job that writes using the generic API is run.") {
     // Create test Kiji table.
-    val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
+    val uri: String = ResourceUtil.doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
       table.getURI.toString
     }
 
@@ -384,7 +391,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
 
   test ("A job that writes to map-type column families is run.") {
     // URI of the Kiji table to use.
-    val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
+    val uri: String = ResourceUtil.doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
       table.getURI.toString
     }
 
@@ -429,7 +436,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
 
   test ("A job that writes to map-type column families with numeric column qualifiers is run.") {
     // URI of the Kiji table to use.
-    val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
+    val uri: String = ResourceUtil.doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
       table.getURI.toString
     }
 
@@ -468,7 +475,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
 
   test("A job that joins two pipes, on string keys, is run in both local and hadoop mode.") {
     // URI of the Kiji table to use.
-    val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
+    val uri: String = ResourceUtil.doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
       table.getURI.toString
     }
 
