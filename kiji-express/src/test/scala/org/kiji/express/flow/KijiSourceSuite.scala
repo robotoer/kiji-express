@@ -47,6 +47,14 @@ import org.kiji.schema.layout.KijiTableLayouts
 class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter {
   import KijiSourceSuite._
 
+  /* Undo all changes to hdfs mode. */
+  before {
+    Mode.mode = Local(strict = true)
+  }
+
+  after {
+    Mode.mode = Local(strict = true)
+  }
 
   setupKijiTest()
   val kiji: Kiji = createTestKiji()
@@ -58,13 +66,13 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   val avroLayout: KijiTableLayout = layout("layout/avro-types.json")
 
   /* Undo all changes to hdfs mode. */
-  before {
-    Mode.mode = Local(true)
-  }
-
-  after {
-    Mode.mode = Local(true)
-  }
+//  before {
+//    Mode.mode = Local(strict = true)
+//  }
+//
+//  after {
+//    Mode.mode = Local(strict = true)
+//  }
 
   private def writeToTable(table: KijiTable, values: List[String]) = {
     val writer: KijiTableWriter = table.openTableWriter()
@@ -99,7 +107,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   test("a word-count job that reads from a Kiji table is run using Scalding's local mode") {
     val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
       writeToTable(table, wordCountInput)
-      table.getURI().toString()
+      table.getURI.toString
     }
     // Create test Kiji table.
     val source = KijiInput.builder
@@ -112,11 +120,11 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   }
 
   test("a word-count job that reads from a Kiji table is run using Hadoop") {
-    Mode.mode = Hdfs(true, conf = new JobConf(getConf))
+    Mode.mode = Hdfs(strict = true, conf = new JobConf(getConf))
 
     val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
       writeToTable(table, wordCountInput)
-      table.getURI().toString()
+      table.getURI.toString
     }
 
     val source = KijiInput.builder
@@ -134,16 +142,16 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
       "7 eid2 word4")
 
   val multipleTimestampsExpected = Set(
-    FlowCell("family","column1",3,"word2").toString(),
-    FlowCell("family","column1",1,"word1").toString(),
-    FlowCell("family","column1",7,"word4").toString(),
-    FlowCell("family","column1",5,"word3").toString()
+    FlowCell("family","column1",3,"word2").toString,
+    FlowCell("family","column1",1,"word1").toString,
+    FlowCell("family","column1",7,"word4").toString,
+    FlowCell("family","column1",5,"word3").toString
   )
 
   test("An import job with multiple timestamps imports all timestamps in local mode.") {
     // Create test Kiji table.
     val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
-      table.getURI().toString()
+      table.getURI.toString
     }
     val source = IterableSource(importMultipleTimestamps, new Fields("line"))
     // Build test job.
@@ -154,10 +162,10 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   }
 
   test("An import with multiple timestamps imports all timestamps using Hadoop.") {
-    Mode.mode = Hdfs(true, conf = new JobConf(getConf))
+    Mode.mode = Hdfs(strict = true, conf = new JobConf(getConf))
 
     val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
-      table.getURI().toString()
+      table.getURI.toString
     }
     val source = IterableSource(importMultipleTimestamps, new Fields("line"))
 
@@ -181,7 +189,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
     // Create test Kiji table.
     val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
       writeToTableWithTimestamp(table, versionCountInput)
-      table.getURI().toString()
+      table.getURI.toString
     }
 
     // Expect up to two entries from each row.
@@ -203,7 +211,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
     // Create test Kiji table.
     val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
       writeToTableWithTimestamp(table, versionCountInput)
-      table.getURI().toString()
+      table.getURI.toString
     }
 
     // Expect only the values with timestamp between 15 and 25.
@@ -232,7 +240,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
     // Create test Kiji table.
     val uri: String = doAndRelease(makeTestKijiTable(simpleLayout)) { table: KijiTable =>
       writeToTableWithTimestamp(table, versionCountInput)
-      table.getURI().toString()
+      table.getURI.toString
     }
 
     val expected: Set[(Boolean, Int)] = Set((true, 6))
@@ -262,7 +270,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
       writer.put(table.getEntityId("row01"), "family", "column3", 10L, genericRecord)
       writer.flush()
 
-      table.getURI().toString()
+      table.getURI.toString
     }
     val source = KijiInput.builder
           .withTableURI(uri)
@@ -273,7 +281,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   }
 
   test("A job that reads using the generic API is run in hdfs mode.") {
-    Mode.mode = Hdfs(true, conf = new JobConf(getConf))
+    Mode.mode = Hdfs(strict = true, conf = new JobConf(getConf))
 
     val genericRecord = new HashSpec()
     genericRecord.setHashType(HashType.MD5)
@@ -287,7 +295,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
       writer.put(table.getEntityId("row01"), "family", "column3", 10L, genericRecord)
       writer.flush()
 
-      table.getURI().toString()
+      table.getURI.toString
     }
 
     val source = KijiInput.builder
@@ -311,7 +319,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
       writer.put(table.getEntityId("row01"), "family", "column3", 10L, specificRecord)
       writer.flush()
 
-      table.getURI().toString()
+      table.getURI.toString
     }
 
     val source = new KijiSource(
@@ -333,7 +341,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   test("A job that writes using the generic API is run.") {
     // Create test Kiji table.
     val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
-      table.getURI().toString()
+      table.getURI.toString
     }
 
     // Input to use with Text source.
@@ -377,7 +385,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   test ("A job that writes to map-type column families is run.") {
     // URI of the Kiji table to use.
     val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
-      table.getURI().toString()
+      table.getURI.toString
     }
 
     // Input text.
@@ -422,7 +430,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   test ("A job that writes to map-type column families with numeric column qualifiers is run.") {
     // URI of the Kiji table to use.
     val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
-      table.getURI().toString()
+      table.getURI.toString
     }
 
     // Create input using mapSlice.
@@ -461,7 +469,7 @@ class KijiSourceSuite extends KijiClientTest with KijiSuite with BeforeAndAfter 
   test("A job that joins two pipes, on string keys, is run in both local and hadoop mode.") {
     // URI of the Kiji table to use.
     val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
-      table.getURI().toString()
+      table.getURI.toString
     }
 
     // Create input from Kiji table.
@@ -542,8 +550,8 @@ object KijiSourceSuite {
         // Sanitize the word.
         .map('word -> 'cleanword) { words:Seq[FlowCell[CharSequence]] =>
           words.head.datum
-              .toString()
-              .toLowerCase()
+              .toString
+              .toLowerCase
         }
         // Count the occurrences of each word.
         .groupBy('cleanword) { occurences => occurences.size }
@@ -570,7 +578,7 @@ object KijiSourceSuite {
         .withColumns("family:column1" -> 'word1, "family:column2" -> 'word2)
         .build
         .map('word1 -> 'pluralword) { words: Seq[FlowCell[CharSequence]] =>
-          words.head.datum.toString() + "s"
+          words.head.datum.toString + "s"
         }
         .write(Tsv(args("output")))
   }
@@ -589,7 +597,7 @@ object KijiSourceSuite {
     source
         // Count the size of words (number of versions).
         .map('words -> ('word, 'versioncount)) { words: Seq[FlowCell[CharSequence]]=>
-          (words.head.datum.toString(), words.size)
+          (words.head.datum.toString, words.size)
         }
         .discard('words, 'entityId)
       .assertOutputValues(

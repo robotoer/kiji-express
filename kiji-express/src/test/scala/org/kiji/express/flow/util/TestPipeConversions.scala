@@ -50,14 +50,14 @@ class TestPipe(val pipe: Pipe)
   implicit def pipeToRichPipe(pipe : Pipe): RichPipe = new RichPipe(pipe)
 
   def assertOutputValues[A](
-                             fields: Fields,
-                             expected: Set[A]
-                             )(
-                             implicit conv: TupleConverter[A],
-                             set: TupleSetter[Unit],
-                             flowDef: FlowDef,
-                             mode: Mode
-                             ): Unit = {
+      fields: Fields,
+      expected: Set[A]
+  )(implicit
+      conv: TupleConverter[A],
+      set: TupleSetter[Unit],
+      flowDef: FlowDef,
+      mode: Mode
+  ) {
     conv.assertArityMatches(fields)
 
     def bf: mutable.Set[A] = mutable.Set[A]()
@@ -84,9 +84,10 @@ class TestPipe(val pipe: Pipe)
     def fn(mySet: mutable.Set[A], tup: A): Unit = { mySet += tup }
 
     val newPipe = new Each(
-      pipe,
-      fields,
-      new SideEffectMapFunction(bf, fn, ef, Fields.NONE, conv, set))
+        pipe,
+        fields,
+        new SideEffectMapFunction(bf, fn, ef, Fields.NONE, conv, set)
+    )
     NullSource.writeFrom(newPipe)(flowDef, mode)
   }
 }
