@@ -19,20 +19,16 @@
 
 package org.kiji.express
 
-import java.io.InputStream
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.twitter.scalding.TupleConversions
 import org.scalatest.FunSuite
 
 import org.kiji.express.flow.FlowCell
-import org.kiji.express.flow.util.ResourceUtil._
 import org.kiji.schema.Kiji
 import org.kiji.schema.KijiColumnName
 import org.kiji.schema.KijiTable
 import org.kiji.schema.layout.KijiTableLayout
-import org.kiji.schema.layout.KijiTableLayouts
-import org.kiji.schema.shell.api.Client
 import org.kiji.schema.util.InstanceBuilder
 
 /** Contains convenience methods for writing tests that use Kiji. */
