@@ -59,6 +59,18 @@
       <artifactId>kryo</artifactId>
     </dependency>
     <dependency>
+      <groupId>cascading.kryo</groupId>
+      <artifactId>cascading.kryo</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>chill_${scala.version}</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>chill-bijection_${scala.version}</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.twitter</groupId>
       <artifactId>scalding-core_${scala.version}</artifactId>
     </dependency>
