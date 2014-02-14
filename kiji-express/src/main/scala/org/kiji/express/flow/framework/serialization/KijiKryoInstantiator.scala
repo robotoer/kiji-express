@@ -1,51 +1,53 @@
+/**
+ * (c) Copyright 2013 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.kiji.express.flow.framework.serialization
 
-import _root_.java.io.Serializable
 import com.esotericsoftware.kryo.Kryo
-import com.twitter.chill.IKryoRegistrar
-import com.twitter.chill.KryoInstantiator
-import com.twitter.chill.ScalaCollectionsRegistrar
-import com.twitter.chill.ScalaKryoInstantiator
-import com.twitter.chill._
+import com.twitter.chill.config.Config
+import com.twitter.scalding.serialization.KryoHadoop
 import org.apache.avro.Schema
+import org.apache.avro.generic.GenericContainer
 import org.apache.avro.specific.SpecificRecord
-import org.apache.avro.generic.{GenericContainer, GenericRecord}
-import _root_.java.io.Serializable
-import scala.reflect.Class
 
+import org.kiji.annotations.ApiAudience
+import org.kiji.annotations.ApiStability
+import org.kiji.annotations.Inheritance
 
 /**
- * Created by sea_bass on 2/4/14.
+ * Kryo specification that adds avro schema, generic record, and specific record serialization
+ * support. Used with [[org.kiji.express.flow.KijiJob]].
  */
-object KijiKryoInstantiator extends ScalaKryoInstantiator{
-  private val mutex = new AnyRef with Serializable // some serializable object
-  @transient private var kpool: KryoPool = null
-
-  /** Return a KryoPool that uses the ScalaKryoInstantiator
-    */
-
-  def defaultPool: KryoPool = mutex.synchronized {
-    if(null == kpool) {
-      kpool = KryoPool.withByteArrayOutputStream(guessThreads, new KijiKryoInstantiator)
-    }
-    kpool
-  }
-
-  private def guessThreads: Int = {
-    val cores = Runtime.getRuntime.availableProcessors
-    val GUESS_THREADS_PER_CORE = 4
-    GUESS_THREADS_PER_CORE * cores
-  }
-}
-
-
-class KijiKryoInstantiator extends ScalaKryoInstantiator {
-  def apply(kryo: Kryo) {
+@ApiAudience.Private
+@ApiStability.Stable
+@Inheritance.Sealed
+class KijiKryoInstantiator(config: Config) extends KryoHadoop(config) {
+  override def newKryo(): Kryo = {
     val kryo = super.newKryo()
-    // k is implicitly converted to a rich kryo
-    kryo.addDefaultSerializer(classOf[Schema], new AvroSchemaSerializer)
-    kryo.addDefaultSerializer(classOf[SpecificRecord], new AvroSpecificSerializer)
-    kryo.addDefaultSerializer(classOf[GenericContainer], new AvroGenericSerializer)
-  }
 
+    kryo.addDefaultSerializer(classOf[Schema], classOf[AvroSchemaSerializer])
+
+    // Note: The order in which these two serializers are added matters. We want SpecificRecords to
+    //     be picked up first before the more generic GenericContainer serializer. SpecificRecord is
+    //     a subclass of GenericContainer.
+    kryo.addDefaultSerializer(classOf[SpecificRecord], classOf[AvroSpecificSerializer])
+    kryo.addDefaultSerializer(classOf[GenericContainer], classOf[AvroGenericSerializer])
+    kryo
+  }
 }

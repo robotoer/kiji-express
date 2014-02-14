@@ -23,24 +23,14 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
 import java.io.FileInputStream
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-import cascading.pipe.Pipe
-import cascading.flow.FlowDef
-import cascading.pipe.Each
-import cascading.tuple.Fields
 import com.google.common.io.Files
-import com.twitter.scalding.FieldConversions
 import com.twitter.scalding.Hdfs
-import com.twitter.scalding.TupleConversions
-import com.twitter.scalding.TupleSetter
-import com.twitter.scalding.TupleConverter
 import com.twitter.scalding.Mode
-import com.twitter.scalding.NullSource
-import com.twitter.scalding.SideEffectMapFunction
 import com.twitter.scalding.Args
-import com.twitter.scalding.RichPipe
 import com.twitter.scalding.IterableSource
 import org.apache.avro.util.Utf8
 import org.apache.commons.io.FileUtils
@@ -85,7 +75,7 @@ class KeyValueStoreSuite extends KijiSuite {
     val kiji: Kiji = new InstanceBuilder(instanceName).build()
     try {
       // Create the instance
-      val kijiUri: KijiURI = kiji.getURI()
+      val kijiUri: KijiURI = kiji.getURI
 
       val client: Client = Client.newInstance(kijiUri)
       client.executeUpdate(ddl)
@@ -96,8 +86,7 @@ class KeyValueStoreSuite extends KijiSuite {
         // Populate the table!!!!
         functionToPopulateTable(new InstanceBuilder(kiji).withTable(table))
 
-        val uri: String = table.getURI().toString
-        return uri
+        table.getURI.toString
       } finally {
         table.release()
       }
@@ -169,8 +158,6 @@ class KeyValueStoreSuite extends KijiSuite {
   }
 
   test("KeyValueStore works with delimited file.") {
-
-
     val outputDir = Files.createTempDir()
     val csvFile = new File(outputDir.getAbsolutePath + "/nba.csv")
     val bw = new BufferedWriter(new FileWriter(csvFile))
@@ -182,7 +169,7 @@ class KeyValueStoreSuite extends KijiSuite {
         |Magic,Lakers
         |Bird,Celtics""".stripMargin)
     bw.close()
-    val args = new Args(Map(("--nba-csv", List(csvFile.getAbsolutePath))))
+    val args = new Args(Map(("nba-csv", List(csvFile.getAbsolutePath))))
     val argsWithMode = Mode.putMode(Hdfs(strict = false, conf = HBaseConfiguration.create()), args)
     val jobTest = new KeyValueStoreSuite.KvsNbaJob(argsWithMode)
     jobTest.run
@@ -190,8 +177,6 @@ class KeyValueStoreSuite extends KijiSuite {
   }
 
   test("KeyValueStore works with XML configuration file.") {
-
-
     //--------------------------------------------------------------------------------
     // Create a KijiTable of NBA players and their teams
     //
@@ -239,7 +224,7 @@ class KeyValueStoreSuite extends KijiSuite {
         | </stores>""".format(nbaUri).stripMargin)
     bwXml.close()
 
-    val args = new Args(Map(("--kvs-xml ", List(xmlFile.getAbsolutePath))))
+    val args = new Args(Map(("kvs-xml", List(xmlFile.getAbsolutePath))))
     val argsWithMode = Mode.putMode(Hdfs(strict = false, conf = HBaseConfiguration.create()), args)
     val jobTest = new KeyValueStoreSuite.KvsNbaJob2(argsWithMode)
     jobTest.run

@@ -1,34 +1,25 @@
 package org.kiji.express.flow.framework.serialization
 
-import com.twitter.chill.{KryoInstantiator, Externalizer}
-import org.kiji.annotations.{ApiStability, ApiAudience}
+import com.esotericsoftware.kryo.DefaultSerializer
+import com.esotericsoftware.kryo.serializers.JavaSerializer
+import com.twitter.scalding.serialization.Externalizer
+import com.twitter.chill.config.ScalaMapConfig
 
+import org.kiji.annotations.ApiAudience
+import org.kiji.annotations.ApiStability
 
-/**
- * Created by sea_bass on 2/4/14.
- */
-
-/**
- * Constructor function for a
- * [[org.kiji.express.flow.framework.serialization.KijiLocker]]
- */
-
+@ApiAudience.Private
+@ApiStability.Stable
 object KijiKryoExternalizer {
-  /* Tokens used to distinguish if we used Kryo or Java */
-  private val KRYO = 0
-  private val JAVA = 1
-
-  def apply[T <: AnyRef](t: T): KijiKryoExternalizer[T] = {
-    val x = new KijiKryoExternalizer[T]
-    x.set(t)
-    x
+  def apply[T](t: T): KijiKryoExternalizer[T] = {
+    val externalizer = new KijiKryoExternalizer[T]
+    externalizer.set(t)
+    externalizer
   }
 }
 
-class KijiKryoExternalizer[T <: AnyRef] extends Externalizer[T] {
-
-  // configure kryo configuration inside of KijiKryoInsdtantiator
-  override def kryo = new KijiKryoInstantiator()
-
-
+@DefaultSerializer(classOf[JavaSerializer])
+class KijiKryoExternalizer[T] extends Externalizer[T] {
+  protected override def kryo =
+      new KijiKryoInstantiator(ScalaMapConfig(Map("scalding.kryo.setreferences" -> "true")))
 }

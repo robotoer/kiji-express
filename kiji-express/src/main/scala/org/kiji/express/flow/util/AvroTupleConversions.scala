@@ -29,7 +29,6 @@ import scala.reflect.Manifest
 import cascading.tuple.Fields
 import cascading.tuple.Tuple
 import cascading.tuple.TupleEntry
-import com.twitter.scalding.TupleConversions
 import com.twitter.scalding.TupleConverter
 import com.twitter.scalding.TuplePacker
 import com.twitter.scalding.TupleSetter
@@ -42,7 +41,7 @@ import org.apache.avro.specific.SpecificRecord
 import org.kiji.annotations.ApiAudience
 import org.kiji.annotations.ApiStability
 import org.kiji.annotations.Inheritance
-import org.kiji.express.flow.framework.serialization.{KijiKryoExternalizer, KijiLocker}
+import org.kiji.express.flow.framework.serialization.KijiKryoExternalizer
 import com.twitter.scalding.TupleConverter.ToMap
 
 /**

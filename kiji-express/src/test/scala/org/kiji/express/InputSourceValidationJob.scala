@@ -32,7 +32,7 @@ import com.twitter.scalding.Source
 import com.twitter.scalding.TupleConverter
 import com.twitter.scalding.TupleSetter
 
-import org.kiji.express.flow.framework.serialization.{KijiKryoExternalizer, KijiLocker}
+import org.kiji.express.flow.framework.serialization.KijiKryoExternalizer
 import org.kiji.express.flow.util.TestPipeConversions
 
 /**

@@ -56,7 +56,7 @@ import org.kiji.express.flow.RowRangeSpec
 import org.kiji.express.flow.SchemaSpec
 import org.kiji.express.flow.TimeRangeSpec
 import org.kiji.express.flow.TransientStream
-import org.kiji.express.flow.framework.serialization.{KijiKryoExternalizer, KijiLocker}
+import org.kiji.express.flow.framework.serialization.KijiKryoExternalizer
 import org.kiji.express.flow.util.AvroUtil
 import org.kiji.express.flow.util.ResourceUtil.withKijiTable
 import org.kiji.mapreduce.framework.KijiConfKeys

@@ -320,7 +320,7 @@
               <include>**/*Suite.scala</include>
               <include>%regex[.*/.*Suite.class]</include>
             </includes>
-            <forkMode>once</forkMode>
+            <forkCount>2C</forkCount>
           </configuration>
         </plugin>
       </plugins>
