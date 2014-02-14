@@ -7,7 +7,11 @@ import com.twitter.chill.config.ScalaMapConfig
 
 import org.kiji.annotations.ApiAudience
 import org.kiji.annotations.ApiStability
+import org.kiji.annotations.Inheritance
 
+/**
+ * Constructors for wrapping objects with a java-serializable container using Kryo.
+ */
 @ApiAudience.Private
 @ApiStability.Stable
 object KijiKryoExternalizer {
@@ -18,6 +22,27 @@ object KijiKryoExternalizer {
   }
 }
 
+/**
+ * Serializable container for wrapping objects using Kryo.
+ *
+ * To use this:
+ * {{{
+ *   val myNonSerializableThings = //...
+ *
+ *   // Wrap your data in a serializable container.
+ *   val myNowSerializableThings = KijiKryoExternalizer(myNonSerializableThings)
+ *
+ *   // To reconstitute your original data:
+ *   val myOriginalThings = myNowSerializableThings.get
+ *
+ *   // - or -
+ *
+ *   val myOriginalThings = myNowSerializableThings.getOption
+ * }}}
+ */
+@ApiAudience.Private
+@ApiStability.Stable
+@Inheritance.Sealed
 @DefaultSerializer(classOf[JavaSerializer])
 class KijiKryoExternalizer[T] extends Externalizer[T] {
   protected override def kryo =

@@ -28,8 +28,15 @@ import cascading.flow.Flow
 import cascading.flow.hadoop.util.HadoopUtil
 import cascading.pipe.Checkpoint
 import cascading.pipe.Pipe
+import cascading.pipe.assembly.AggregateBy
 import cascading.tap.Tap
-import com.twitter.scalding._
+import cascading.tuple.collect.SpillableProps
+import com.twitter.chill.config.ConfiguredInstantiator
+import com.twitter.chill.config.ScalaMapConfig
+import com.twitter.scalding.Args
+import com.twitter.scalding.HadoopTest
+import com.twitter.scalding.Hdfs
+import com.twitter.scalding.Job
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.hbase.security.User
@@ -44,12 +51,9 @@ import org.kiji.express.flow.framework.KijiTap
 import org.kiji.express.flow.framework.LocalKijiTap
 import org.kiji.express.flow.framework.hfile.HFileFlowStepStrategy
 import org.kiji.express.flow.framework.hfile.HFileKijiTap
+import org.kiji.express.flow.framework.serialization.KijiKryoInstantiator
 import org.kiji.express.flow.util.AvroTupleConversions
 import org.kiji.express.flow.util.PipeConversions
-import cascading.tuple.collect.SpillableProps
-import cascading.pipe.assembly.AggregateBy
-import com.twitter.chill.config.{ConfiguredInstantiator, ScalaMapConfig}
-import org.kiji.express.flow.framework.serialization.KijiKryoInstantiator
 
 /**
  * KijiJob is KijiExpress's extension of Scalding's `Job`, and users should extend it when writing

@@ -28,7 +28,6 @@ import java.util.Properties
 
 import cascading.flow.FlowProcess
 import cascading.flow.hadoop.util.HadoopUtil
-import cascading.scheme.Scheme
 import cascading.scheme.SinkCall
 import cascading.tap.Tap
 import cascading.tuple.Fields
@@ -36,7 +35,6 @@ import cascading.tuple.Tuple
 import cascading.tuple.TupleEntry
 import com.google.common.base.Objects
 import com.twitter.scalding.AccessMode
-import com.twitter.scalding.HadoopSchemeInstance
 import com.twitter.scalding.HadoopTest
 import com.twitter.scalding.Hdfs
 import com.twitter.scalding.Local
@@ -48,8 +46,6 @@ import com.twitter.scalding.Write
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.mapred.JobConf
-import org.apache.hadoop.mapred.OutputCollector
-import org.apache.hadoop.mapred.RecordReader
 
 import org.kiji.annotations.ApiAudience
 import org.kiji.annotations.ApiStability
@@ -138,13 +134,6 @@ final class KijiSource private[express] (
           convertKeysToStrings(outputColumns),
           rowRangeSpec,
           rowFilterSpec)
-
-  val hdfsScheme: Scheme[JobConf, RecordReader[_, _], OutputCollector[_, _], _, _] =
-    HadoopSchemeInstance(kijiScheme)
-
-//  val localScheme: LocalScheme = localKijiScheme
-//    // This cast is required due to Scheme being defined with invariant type parameters.
-//    .asInstanceOf[LocalScheme]
 
   /**
    * Create a connection to the physical data source (also known as a Tap in Cascading)
@@ -336,7 +325,7 @@ private[express] object KijiSource {
 
       // Write the desired rows to the table.
       withKijiTableWriter(tableUri, configuration) { writer: KijiTableWriter =>
-        rows.get.foreach { row: Tuple =>
+        rows.flatten.foreach { row: Tuple =>
           val tupleEntry = new TupleEntry(fields, row)
           val iterator = fields.iterator()
 
@@ -477,7 +466,7 @@ private[express] object KijiSource {
                   }
                   .toSeq
 
-              buffer.get += new Tuple(newTupleValues: _*)
+              buffer.foreach { _ += new Tuple(newTupleValues: _*) }
             }
           }
         }

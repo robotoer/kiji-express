@@ -156,6 +156,7 @@
         <groupId>cascading.kryo</groupId>
         <artifactId>cascading.kryo</artifactId>
         <version>${cascading-kryo.version}</version>
+        <scope>compile</scope>
       </dependency>
 
       <!-- Test dependencies. -->
