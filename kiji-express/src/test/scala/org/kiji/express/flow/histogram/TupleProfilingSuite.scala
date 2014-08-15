@@ -109,7 +109,9 @@ class TupleProfilingSuite extends KijiSuite {
     val tempFile: File = File.createTempFile("size-histogram", ".csv")
     try {
       val data: Seq[Array[Int]] = Seq(
+          // Should show up as 7 bytes (6 bytes of overhead, 1 byte for integer less than 127).
           Array(1),
+          // Should show up as 8 bytes (6 bytes of overhead, 2 bytes for integers less than 127).
           Array(1, 2)
       )
 
@@ -121,17 +123,19 @@ class TupleProfilingSuite extends KijiSuite {
           .sink[Array[Int]](Tsv("output"))({ output: Seq[Array[Int]] => data == output})
           .run
           .runHadoop
-          .counter("4", "SIZE_OF_TUPLES")({ counter: Long => assert(counter == 1L)})
           .counter("8", "SIZE_OF_TUPLES")({ counter: Long => assert(counter == 1L)})
+          .counter("9", "SIZE_OF_TUPLES")({ counter: Long => assert(counter == 1L)})
           .finish
 
       // Validate the resulting csv file.
       ResourceUtil.doAndClose(io.Source.fromFile(tempFile))({ source =>
-        val tempFileLines: Seq[String] = source.getLines().toSeq
-        assert("bin-id,lower-bound,upper-bound,value" === tempFileLines(0))
-        assert("4,4.0,5.0,1" === tempFileLines(2))
-        assert("8,8.0,9.0,1" === tempFileLines(1))
-        assert(3 === tempFileLines.size)
+        val tempFileLines: Seq[String] = source.getLines().toList
+        val expectedFile = Seq(
+            "bin-id,lower-bound,upper-bound,value",
+            "8,7.0,8.0,1",
+            "9,8.0,9.0,1"
+        )
+        assert(expectedFile === tempFileLines)
       })
     } finally {
       tempFile.delete()
@@ -151,19 +155,22 @@ class TupleProfilingSuite extends KijiSuite {
           .sink[Int](Tsv("output"))({ (output: Seq[Int]) => data == output})
           .run
           .runHadoop
-          .counter("0", "TIME_TO_PROCESS_TUPLES")({ counter: Long => assert(counter == 1L)})
-          .counter("1", "TIME_TO_PROCESS_TUPLES")({ counter: Long => assert(counter == 1L)})
-          .counter("2", "TIME_TO_PROCESS_TUPLES")({ counter: Long => assert(counter == 1L)})
+          // These counters take nano-second time.
+          .counter("8", "TIME_TO_PROCESS_TUPLES")({ counter: Long => assert(counter == 1L)})
+          .counter("9", "TIME_TO_PROCESS_TUPLES")({ counter: Long => assert(counter == 1L)})
+          .counter("10", "TIME_TO_PROCESS_TUPLES")({ counter: Long => assert(counter == 1L)})
           .finish
 
       // Validate the resulting csv file.
       ResourceUtil.doAndClose(io.Source.fromFile(tempFile))({ source =>
-        val tempFileLines: Seq[String] = source.getLines().toSeq
-        assert("bin-id,lower-bound,upper-bound,value" === tempFileLines(0))
-        assert("0,0.0,1.0,1" === tempFileLines(1))
-        assert("1,1.0,10.0,1" === tempFileLines(2))
-        assert("2,10.0,100.0,1" === tempFileLines(3))
-        assert(4 === tempFileLines.size)
+        val tempFileLines: Seq[String] = source.getLines().toList
+        val expectedFile = Seq(
+            "bin-id,lower-bound,upper-bound,value",
+            "8,1.0E7,1.0E8,1",
+            "9,1.0E8,1.0E9,1",
+            "10,1.0E9,1.0E10,1"
+        )
+        assert(expectedFile === tempFileLines)
       })
     } finally {
       tempFile.delete()
@@ -238,15 +245,15 @@ object TupleProfilingSuite {
     override def histograms: List[HistogramConfig] = super.histograms ++ Seq(timeHistogram)
 
     inputSource
-        .map(0 -> 'newData) { original: Int =>
-          TupleProfiling.profileTime(
-              timeHistogram,
-              (input: Int) => {
-                Thread.sleep(input)
-                input
-              }
-          )
-        }
+        .map(0 -> 'newData)(
+            TupleProfiling.profileTime(
+                timeHistogram,
+                (input: Int) => {
+                  Thread.sleep(input)
+                  input
+                }
+            )
+        )
         .write(outputSource)
   }
 }
