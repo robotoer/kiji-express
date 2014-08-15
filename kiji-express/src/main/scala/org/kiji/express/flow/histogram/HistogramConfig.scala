@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.express.flow
+package org.kiji.express.flow.histogram
 
 import com.twitter.scalding.Stat
 import com.twitter.scalding.UniqueID
@@ -27,16 +27,12 @@ import com.twitter.scalding.UniqueID
  *
  * @param mName of the histogram.
  * @param mPath to write the histogram to.
- * @param mBinner is a function that takes a statistic to bin and produces the number of the bin it
- *     should affect.
- * @param mBinnerLowerBound is a function that takes a bin id and produces the lower bound for that
- *     bin.
+ * @param mBinner defines the method used to bin values.
  */
-class HistogramConfig(
+final class HistogramConfig private(
     private val mName: String,
     private val mPath: String,
-    private val mBinner: Double => Int,
-    private val mBinnerLowerBound: Int => Double
+    private val mBinner: HistogramBinner
 ) {
   /**
    * Increments a counter associated with the provided statistic.
@@ -46,7 +42,7 @@ class HistogramConfig(
    *     within. This is used to get a kryo configured as it would be for cascading.
    */
   def incrementBinCount(stat: Double)(implicit uniqueIdContainer: UniqueID): Unit = {
-    val counter = Stat(mBinner(stat).toString, mName)(uniqueIdContainer)
+    val counter = Stat(mBinner.binValue(stat).toString, mName)(uniqueIdContainer)
 
     counter.inc
   }
@@ -58,7 +54,7 @@ class HistogramConfig(
    * @return the lower bound of a bin.
    */
   def binLowerBound(binId: Int): Double = {
-    mBinnerLowerBound(binId)
+    mBinner.binBoundary(binId)
   }
 
   /**
@@ -84,4 +80,25 @@ class HistogramConfig(
    * @return the path to write the histogram to.
    */
   def path: String = mPath
+}
+
+/**
+ * Companion object providing factory methods.
+ */
+object HistogramConfig {
+  /**
+   * The configuration describing a histogram. Includes configuration for bin widths/starts.
+   *
+   * @param name of the histogram.
+   * @param path to write the histogram to.
+   * @param binner defines the method used to bin values.
+   * @return a new histogram configuration.
+   */
+  def apply(
+      name: String,
+      path: String,
+      binner: HistogramBinner
+  ): HistogramConfig = {
+    new HistogramConfig(name, path, binner)
+  }
 }

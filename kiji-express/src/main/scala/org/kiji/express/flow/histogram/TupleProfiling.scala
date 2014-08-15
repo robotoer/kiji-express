@@ -17,8 +17,10 @@
  * limitations under the License.
  */
 
-package org.kiji.express.flow
+package org.kiji.express.flow.histogram
 
+import java.io.File
+import java.io.PrintWriter
 import java.util.Properties
 
 import scala.collection.JavaConverters.mapAsScalaMapConverter
@@ -29,7 +31,6 @@ import cascading.kryo.KryoSerialization
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.Output
 import com.google.common.base.Preconditions
-import com.google.common.math.DoubleMath
 import com.twitter.scalding.RuntimeStats
 import com.twitter.scalding.UniqueID
 import org.apache.hadoop.conf.Configuration
@@ -80,13 +81,13 @@ import org.apache.hadoop.conf.Configuration
  *       HistogramConfig(
  *           name="size-of-tuples-map-1",
  *           path=args("before-size-histogram"),
- *           binConfig=TupleProfiling.equalWidthBinConfig(binSize=10, binCount=500)
+ *           binner=EqualWidthBinner(binSize=10, binCount=500)
  *       )
  *   val timeHistogram: HistogramConfig =
  *       HistogramConfig(
  *           name="time-to-process-map-1",
  *           path=args("time-histogram"),
- *           binConfig=TupleProfiling.logWidthBinConfig(logBase=math.E)
+ *           binner=LogWidthBinner(logBase=math.E)
  *       )
  *
  *   inputSource
@@ -180,66 +181,44 @@ object TupleProfiling {
   }
 
   /**
-   * Sets up a log-width binning configuration. The width of bins will increase exponentially with
-   * increasing bin IDs.
+   * Writes a histogram to a file.
    *
-   * @param logBase is the exponential base to expand the width of bins with.
-   * @param startingPower is the starting power to raise the exponential base to.
-   * @param powerStepSize is the amount to increase the power the exponential base is raised to for
-   *     each bin.
-   * @return a binning function for this log-width binning configuration.
+   * @param histogram to write. Also specifies the location of the file to write to.
+   * @param counters resulting from running an express flow.
    */
-  def logWidthBinConfig(
-      logBase: Double = math.E,
-      startingPower: Double = 0.0,
-      powerStepSize: Double = 1.0
-  ): Double => Int = {
-    // Only need to calculate this once.
-    val logDenominator: Double = math.log(logBase)
-
-    // Return a function.
-    { stat: Double =>
-      Preconditions.checkState(
-          stat > 0.0,
-          "Expected stat to be larger than 0: %s",
-          stat: java.lang.Double
-      )
-
-      math.floor((math.log(stat) / logDenominator - startingPower) / powerStepSize).toInt + 1
-    }
-  }
-
-  /**
-   * Sets up an equal-width binning configuration. The width of bins will be constant.
-   *
-   * @param binStart is the upper bound (exclusive) of the first bin.
-   * @param binSize is the width of each bin.
-   * @param binCount is the total number of bins to create.
-   * @return a binning function for this equal-width binning configuration.
-   */
-  def equalWidthBinConfig(binStart: Double, binSize: Double, binCount: Int): Double => Int = {
-    // Return a function.
-    { stat: Double =>
-      val rawBinId: Int = math.floor((stat - binStart) / binSize).toInt + 1
-      math.min(binCount + 1, math.max(rawBinId, 0))
-    }
-  }
-
   def writeHistogram(histogram: HistogramConfig, counters: Set[(String, String, Long)]): Unit = {
     // Find all counters for this histogram.
     val binMap = counters
         .collect({
-          case (histogram.name, counterBin, counterValue) => (counterBin.toInt, counterValue)
+          case (counterName, counterBin, counterValue) if counterName == histogram.name => {
+            (counterBin.toInt, counterValue)
+          }
         })
         .toSeq
 
     val sortedBinMap: SortedMap[Int, Long] = SortedMap(binMap: _*)
 
-    sortedBinMap
-        .foreach({ counter: (Int, Long) =>
-          val (counterId, counterValue) = counter
+    val histogramFile = new File(histogram.path)
+    if (histogramFile.exists()) {
+      histogramFile.delete()
+    }
+    val writer: PrintWriter = new PrintWriter(histogramFile)
+    try {
+      // Print the header.
+      writer.println("bin-id,lower-bound,upper-bound,value")
 
-          histogram
-        })
+      // Print the counter values.
+      sortedBinMap
+          .foreach({ counter: (Int, Long) =>
+            val (counterId, counterValue) = counter
+
+            val lowerBound: Double = histogram.binLowerBound(counterId)
+            val upperBound: Double = histogram.binUpperBound(counterId)
+            writer.println(s"$counterId,$lowerBound,$upperBound,$counterValue")
+          })
+    } finally {
+      writer.flush()
+      writer.close()
+    }
   }
 }

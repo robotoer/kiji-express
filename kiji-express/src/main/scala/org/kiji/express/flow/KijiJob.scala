@@ -63,6 +63,8 @@ import org.kiji.express.flow.framework.LocalKijiTap
 import org.kiji.express.flow.framework.hfile.HFileFlowStepStrategy
 import org.kiji.express.flow.framework.hfile.HFileKijiTap
 import org.kiji.express.flow.framework.serialization.KijiKryoInstantiator
+import org.kiji.express.flow.histogram.HistogramConfig
+import org.kiji.express.flow.histogram.TupleProfiling
 import org.kiji.express.flow.util.AvroTupleConversions
 import org.kiji.express.flow.util.PipeConversions
 import org.kiji.express.flow.util.ResourcesShutdown
