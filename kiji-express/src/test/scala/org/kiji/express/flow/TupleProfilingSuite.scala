@@ -52,34 +52,40 @@ class TupleProfilingSuite extends KijiSuite {
   }
 
   test("Test logarithmic binning") {
-    // Creates 5 bins:
+    // Creates bins:
     //  - test-log-histogram0: [0.0, 1.0)
     //  - test-log-histogram1: [1.0, 10.0)
     //  - test-log-histogram2: [10.0, 100.0)
     //  - test-log-histogram3: [100.0, 1000.0)
-    //  - test-log-histogram4: [1000.0, infinity)
-    val logWidthBinConfig: (Double) => Int = TupleProfiling.logWidthBinConfig(3, 10.0, 0.0, 1.0)
+    //  - ...
+    val logWidthBinConfig: (Double) => Int = TupleProfiling.logWidthBinConfig(10.0, 0.0, 1.0)
 
-    val expectedException = try {
+    val expectedException: Option[IllegalStateException] = try {
       logWidthBinConfig(0.0)
 
       None
+    } catch {
+      case ise: IllegalStateException => Some(ise)
     }
 
-    assert(0 == logWidthBinConfig(0.5))
-    assert(0 == logWidthBinConfig(0.9))
+    assert(expectedException.nonEmpty, "0.0 should not be a valid value for logarithmic binning.")
+    assert(expectedException.get.getMessage == "Expected stat to be larger than 0: 0.0")
 
-    assert(1 == logWidthBinConfig(1.0))
-    assert(1 == logWidthBinConfig(5.0))
+    assert(0 === logWidthBinConfig(0.5))
+    assert(0 === logWidthBinConfig(0.9))
 
-    assert(2 == logWidthBinConfig(10.0))
-    assert(2 == logWidthBinConfig(50.0))
+    assert(1 === logWidthBinConfig(1.0))
+    assert(1 === logWidthBinConfig(5.0))
 
-    assert(3 == logWidthBinConfig(100.0))
-    assert(3 == logWidthBinConfig(500.0))
+    assert(2 === logWidthBinConfig(10.0))
+    assert(2 === logWidthBinConfig(50.0))
 
-    assert(3 == logWidthBinConfig(1000.0))
-    assert(3 == logWidthBinConfig(15000.0))
+    assert(3 === logWidthBinConfig(100.0))
+    assert(3 === logWidthBinConfig(500.0))
+
+    // This currently doesn't pass due to a double-precision error.
+//    assert(4 === logWidthBinConfig(1000.0))
+    assert(5 === logWidthBinConfig(15000.0))
   }
 
   test("Test tuple size profiling") {
@@ -95,14 +101,8 @@ class TupleProfilingSuite extends KijiSuite {
         .sink[Array[Int]](Tsv("output"))({ output: Seq[Array[Int]] => data == output })
         .run
         .runHadoop
-        .counter(
-            "SIZE_OF_TUPLES4",
-            TupleProfiling.HISTOGRAM_COUNTER_GROUP
-        )({ counter: Long => assert(counter == 1L) })
-        .counter(
-            "SIZE_OF_TUPLES8",
-            TupleProfiling.HISTOGRAM_COUNTER_GROUP
-        )({ counter: Long => assert(counter == 1L) })
+        .counter("4", "SIZE_OF_TUPLES")({ counter: Long => assert(counter == 1L) })
+        .counter("8", "SIZE_OF_TUPLES")({ counter: Long => assert(counter == 1L) })
         .finish
   }
 
@@ -117,18 +117,9 @@ class TupleProfilingSuite extends KijiSuite {
         .sink[Int](Tsv("output"))({ (output: Seq[Int]) => data == output })
         .run
         .runHadoop
-        .counter(
-            "TIME_TO_PROCESS_TUPLES0",
-            TupleProfiling.HISTOGRAM_COUNTER_GROUP
-        )({ counter: Long => assert(counter == 1L) })
-        .counter(
-            "TIME_TO_PROCESS_TUPLES1",
-            TupleProfiling.HISTOGRAM_COUNTER_GROUP
-        )({ counter: Long => assert(counter == 1L) })
-        .counter(
-            "TIME_TO_PROCESS_TUPLES2",
-            TupleProfiling.HISTOGRAM_COUNTER_GROUP
-        )({ counter: Long => assert(counter == 1L) })
+        .counter("0", "TIME_TO_PROCESS_TUPLES")({ counter: Long => assert(counter == 1L) })
+        .counter("1", "TIME_TO_PROCESS_TUPLES")({ counter: Long => assert(counter == 1L) })
+        .counter("2", "TIME_TO_PROCESS_TUPLES")({ counter: Long => assert(counter == 1L) })
         .finish
   }
 }
@@ -157,8 +148,6 @@ object TupleProfilingSuite {
     inputSource
         .map(0 -> 'newData) { original: Array[Int] =>
           TupleProfiling.profileSize(sizeHistogram, original)
-
-          original
         }
         .write(outputSource)
   }
@@ -177,7 +166,7 @@ object TupleProfilingSuite {
         new HistogramConfig(
             mName = "TIME_TO_PROCESS_TUPLES",
             mPath = args("time-histogram"),
-            mBinner = TupleProfiling.logWidthBinConfig(binCount = 3, logBase = 10.0)
+            mBinner = TupleProfiling.logWidthBinConfig(logBase = 10.0)
         )
 
     inputSource

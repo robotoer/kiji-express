@@ -22,12 +22,14 @@ package org.kiji.express.flow
 import java.util.Properties
 
 import scala.collection.JavaConverters.mapAsScalaMapConverter
+import scala.collection.SortedMap
 
 import cascading.flow.FlowProcess
 import cascading.kryo.KryoSerialization
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.Output
 import com.google.common.base.Preconditions
+import com.google.common.math.DoubleMath
 import com.twitter.scalding.RuntimeStats
 import com.twitter.scalding.UniqueID
 import org.apache.hadoop.conf.Configuration
@@ -84,7 +86,7 @@ import org.apache.hadoop.conf.Configuration
  *       HistogramConfig(
  *           name="time-to-process-map-1",
  *           path=args("time-histogram"),
- *           binConfig=TupleProfiling.logWidthBinConfig(logBase=math.E, binCount=100)
+ *           binConfig=TupleProfiling.logWidthBinConfig(logBase=math.E)
  *       )
  *
  *   inputSource
@@ -105,8 +107,6 @@ import org.apache.hadoop.conf.Configuration
  * </code></pre>
  */
 object TupleProfiling {
-  val HISTOGRAM_COUNTER_GROUP: String = "Express Histogram Counters"
-
   /**
    * Profiles the sizes of the provided tuples. Requires that the provided data is serializable by
    * Kryo.
@@ -183,7 +183,6 @@ object TupleProfiling {
    * Sets up a log-width binning configuration. The width of bins will increase exponentially with
    * increasing bin IDs.
    *
-   * @param binCount is the total number of bins to create.
    * @param logBase is the exponential base to expand the width of bins with.
    * @param startingPower is the starting power to raise the exponential base to.
    * @param powerStepSize is the amount to increase the power the exponential base is raised to for
@@ -191,25 +190,22 @@ object TupleProfiling {
    * @return a binning function for this log-width binning configuration.
    */
   def logWidthBinConfig(
-      binCount: Int,
       logBase: Double = math.E,
       startingPower: Double = 0.0,
       powerStepSize: Double = 1.0
   ): Double => Int = {
-    val binMapping = new java.util.TreeMap[Double, Int]()
-    for (i <- 0.until(binCount)) {
-      binMapping.put(math.pow(logBase, i * powerStepSize + startingPower), i)
-    }
+    // Only need to calculate this once.
+    val logDenominator: Double = math.log(logBase)
 
     // Return a function.
     { stat: Double =>
       Preconditions.checkState(
           stat > 0.0,
-          "Expected stat to be larger than 0: %f",
+          "Expected stat to be larger than 0: %s",
           stat: java.lang.Double
       )
 
-      math.floor((math.log(stat) / math.log(logBase) - startingPower) / powerStepSize).toInt
+      math.floor((math.log(stat) / logDenominator - startingPower) / powerStepSize).toInt + 1
     }
   }
 
@@ -227,5 +223,23 @@ object TupleProfiling {
       val rawBinId: Int = math.floor((stat - binStart) / binSize).toInt + 1
       math.min(binCount + 1, math.max(rawBinId, 0))
     }
+  }
+
+  def writeHistogram(histogram: HistogramConfig, counters: Set[(String, String, Long)]): Unit = {
+    // Find all counters for this histogram.
+    val binMap = counters
+        .collect({
+          case (histogram.name, counterBin, counterValue) => (counterBin.toInt, counterValue)
+        })
+        .toSeq
+
+    val sortedBinMap: SortedMap[Int, Long] = SortedMap(binMap: _*)
+
+    sortedBinMap
+        .foreach({ counter: (Int, Long) =>
+          val (counterId, counterValue) = counter
+
+          histogram
+        })
   }
 }
